@@ -12,6 +12,7 @@ export interface TimeLog {
   type: 'ENTRADA' | 'SALIDA';
   source: string;
   row: number;
+  entryType?: 'Manual' | 'Automático';
 }
 
 export interface ApiResponse {
@@ -28,7 +29,7 @@ export const apiService = {
     return response.json();
   },
 
-  async addLog(employeeId: string, type: 'ENTRADA' | 'SALIDA', timestamp?: string): Promise<void> {
+  async addLog(employeeId: string, type: 'ENTRADA' | 'SALIDA', timestamp?: string, entryType: 'Manual' | 'Automático' = 'Automático'): Promise<void> {
     const formData = new FormData();
     formData.append('action', 'addLog');
     formData.append('employeeId', employeeId);
@@ -36,6 +37,7 @@ export const apiService = {
     if (timestamp) {
       formData.append('timestamp', timestamp);
     }
+    formData.append('entryType', entryType);
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -102,6 +104,7 @@ export const apiService = {
     formData.append('row', log.row.toString());
     if (log.timestamp) formData.append('timestamp', log.timestamp);
     if (log.type) formData.append('type', log.type);
+    if (log.entryType) formData.append('entryType', log.entryType);
 
     const response = await fetch(API_URL, {
       method: 'POST',
