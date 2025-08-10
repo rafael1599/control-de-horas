@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface Employee {
   id: string;
@@ -71,6 +72,7 @@ const EmployeeClockIn: React.FC<EmployeeClockInProps> = ({
             disabled={loading || !selectedEmployee}
             className="flex-1 bg-blue-600 hover:bg-blue-700"
           >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Registrar ENTRADA
           </Button>
           
@@ -80,6 +82,7 @@ const EmployeeClockIn: React.FC<EmployeeClockInProps> = ({
             variant="destructive"
             className="flex-1"
           >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Registrar SALIDA
           </Button>
         </div>
