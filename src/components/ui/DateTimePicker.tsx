@@ -23,7 +23,7 @@ export function DateTimePicker({ date, setDate, className }: DateTimePickerProps
       newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10));
 
       if (isBefore(newDate, minEntryTime) || isAfter(newDate, now)) {
-        // Si la nueva fecha/hora está fuera del rango, no la actualizamos.
+        // Si la nueva fecha/hora está fuera del rango, no la actualizamos...
         // Opcionalmente, podrías mostrar un toast de advertencia aquí.
         return;
       }
