@@ -6,9 +6,12 @@ import WeeklyDashboard from './WeeklyDashboard';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import { apiService, Employee, TimeLog } from '@/services/api';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { DateTimePicker } from './ui/DateTimePicker';
+import { subHours, differenceInMinutes, format } from 'date-fns';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
+
 
 const AppLayout: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -17,7 +20,16 @@ const AppLayout: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showManualClockIn, setShowManualClockIn] = useState(false);
   const [employeeForManualClockIn, setEmployeeForManualClockIn] = useState<string | null>(null);
-  const [manualClockInTime, setManualClockInTime] = useState('');
+  const [manualClockInTime, setManualClockInTime] = useState<Date | undefined>(undefined);
+  
+  const [showClockInWarning, setShowClockInWarning] = useState(false);
+  const [pendingClockInData, setPendingClockInData] = useState<{ employeeId: string, type: 'ENTRADA' | 'SALIDA' } | null>(null);
+  const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
+  
+  // Nuevo estado para la advertencia de turno completado
+  const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
+
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -40,17 +52,64 @@ const AppLayout: React.FC = () => {
       setLoading(false);
     }
   };
+  
+  const proceedWithClockIn = async (employeeId: string) => {
+      await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
+      await loadData();
+      
+      const employee = employees.find(e => e.id === employeeId);
+      toast({
+        title: "Éxito",
+        description: `ENTRADA registrada para ${employee?.name}`,
+      });
+  }
+  
+  const handleClockInWarningConfirm = async () => {
+    if (pendingClockInData) {
+        try {
+            setLoading(true);
+            setShowClockInWarning(false);
+            await proceedWithClockIn(pendingClockInData.employeeId);
+        } catch (error) {
+             toast({
+                title: "Error",
+                description: "No se pudo registrar la acción",
+                variant: "destructive"
+            });
+        } finally {
+            setLoading(false);
+            setPendingClockInData(null);
+        }
+    }
+  }
 
   const handleClockAction = async (employeeId: string, type: 'ENTRADA' | 'SALIDA') => {
     try {
       setLoading(true);
       
-      const employeeLogs = logs.filter(log => log.employeeId === employeeId);
-      const lastLog = employeeLogs[employeeLogs.length - 1];
+      const employeeLogs = logs.filter(log => log.employeeId === employeeId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      const lastLog = employeeLogs[0];
       
-      if (type === 'SALIDA' && (!lastLog || lastLog.type === 'SALIDA')) {
-        setEmployeeForManualClockIn(employeeId);
-        setShowManualClockIn(true);
+      // Lógica de SALIDA modificada
+      if (type === 'SALIDA') {
+        if (!lastLog) {
+            // Caso 1: Nunca ha registrado nada, necesita entrada manual.
+            setEmployeeForManualClockIn(employeeId);
+            setManualClockInTime(subHours(new Date(), 8));
+            setShowManualClockIn(true);
+        } else if (lastLog.type === 'SALIDA') {
+            // Caso 2: Su último registro ya fue una salida, turno completado.
+            setShowTurnCompletedWarning(true);
+        } else {
+            // Caso 3: Su último registro fue una entrada, procede a registrar la salida.
+             await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
+             await loadData();
+             const employee = employees.find(e => e.id === employeeId);
+             toast({
+                title: "Éxito",
+                description: `SALIDA registrada para ${employee?.name}`,
+            });
+        }
         setLoading(false);
         return;
       }
@@ -64,7 +123,18 @@ const AppLayout: React.FC = () => {
         setLoading(false);
         return;
       }
-
+      
+      if (type === 'ENTRADA' && lastLog && lastLog.type === 'SALIDA') {
+          const minutesSinceLastClockOut = differenceInMinutes(new Date(), new Date(lastLog.timestamp));
+          if (minutesSinceLastClockOut < 5) { 
+              setLastClockOutTime(format(new Date(lastLog.timestamp), 'p'));
+              setPendingClockInData({ employeeId, type });
+              setShowClockInWarning(true);
+              setLoading(false);
+              return;
+          }
+      }
+      
       await apiService.addLog(employeeId, type, undefined, 'Automático');
       await loadData();
       
@@ -88,7 +158,7 @@ const AppLayout: React.FC = () => {
     if (!employeeForManualClockIn || !manualClockInTime) {
       toast({
         title: "Error",
-        description: "Por favor ingresa la hora de entrada",
+        description: "Por favor, selecciona una fecha y hora de entrada",
         variant: "destructive"
       });
       return;
@@ -96,10 +166,9 @@ const AppLayout: React.FC = () => {
 
     try {
       setLoading(true);
-      // Add the manual clock-in
-      await apiService.addLog(employeeForManualClockIn, 'ENTRADA', new Date(manualClockInTime).toISOString(), 'Manual');
+      setShowManualClockIn(false);
       
-      // Immediately add the clock-out
+      await apiService.addLog(employeeForManualClockIn, 'ENTRADA', manualClockInTime.toISOString(), 'Manual');
       await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
       
       await loadData();
@@ -115,13 +184,12 @@ const AppLayout: React.FC = () => {
             variant: "destructive"
         });
     } finally {
-        setShowManualClockIn(false);
         setEmployeeForManualClockIn(null);
-        setManualClockInTime('');
+        setManualClockInTime(undefined);
         setLoading(false);
     }
   };
-
+  
   const handleAddEmployee = async (employee: Employee) => {
     try {
       setLoading(true);
@@ -226,6 +294,7 @@ const AppLayout: React.FC = () => {
     }
   };
 
+
   if (loading && employees.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -241,7 +310,7 @@ const AppLayout: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg text-center">
+          <div className="bg-white p-6 rounded-lg text-center shadow-lg">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2">Procesando...</p>
           </div>
@@ -276,18 +345,17 @@ const AppLayout: React.FC = () => {
       </div>
       
       <Toaster />
+
       <Dialog open={showManualClockIn} onOpenChange={setShowManualClockIn}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Entrada Manual Olvidada</DialogTitle>
+             <DialogDescription>
+                No se encontró una entrada abierta. Se ha pre-calculado una hora de entrada 8 horas antes de este momento. Ajústala si es necesario.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <p>No se encontró una entrada abierta. Por favor, ingresa la hora de entrada para registrar tu salida.</p>
-            <Input
-              type="datetime-local"
-              value={manualClockInTime}
-              onChange={(e) => setManualClockInTime(e.target.value)}
-            />
+          <div className="space-y-4 pt-4">
+            <DateTimePicker date={manualClockInTime} setDate={setManualClockInTime} />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowManualClockIn(false)}>Cancelar</Button>
@@ -295,6 +363,36 @@ const AppLayout: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={showClockInWarning} onOpenChange={setShowClockInWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Nueva Entrada</DialogTitle>
+             <DialogDescription>
+                Acabas de registrar una salida a las {lastClockOutTime}. ¿Estás seguro de que quieres iniciar un nuevo turno tan pronto?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowClockInWarning(false)}>Cancelar</Button>
+            <Button onClick={handleClockInWarningConfirm}>Sí, registrar entrada</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* NUEVO DIÁLOGO DE ADVERTENCIA */}
+      <AlertDialog open={showTurnCompletedWarning} onOpenChange={setShowTurnCompletedWarning}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Turno ya completado</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      Ya has registrado una salida para tu turno actual. No puedes registrar otra salida sin antes haber registrado una nueva entrada. Si crees que esto es un error, por favor, contacta al administrador.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setShowTurnCompletedWarning(false)}>Entendido</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

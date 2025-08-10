@@ -14,7 +14,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
 
   const handleLogin = () => {
-    if (password === 'admin123') {
+    if (password === '1111') {
       onLogin();
       setIsOpen(false);
       setPassword('');
