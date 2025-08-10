@@ -6,12 +6,18 @@ import WeeklyDashboard from './WeeklyDashboard';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import { apiService, Employee, TimeLog } from '@/services/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const AppLayout: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [logs, setLogs] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showManualClockIn, setShowManualClockIn] = useState(false);
+  const [employeeForManualClockIn, setEmployeeForManualClockIn] = useState<string | null>(null);
+  const [manualClockInTime, setManualClockInTime] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -39,16 +45,13 @@ const AppLayout: React.FC = () => {
     try {
       setLoading(true);
       
-      // Check for existing open entry
       const employeeLogs = logs.filter(log => log.employeeId === employeeId);
       const lastLog = employeeLogs[employeeLogs.length - 1];
       
       if (type === 'SALIDA' && (!lastLog || lastLog.type === 'SALIDA')) {
-        toast({
-          title: "Error",
-          description: "No hay entrada registrada para este empleado",
-          variant: "destructive"
-        });
+        setEmployeeForManualClockIn(employeeId);
+        setShowManualClockIn(true);
+        setLoading(false);
         return;
       }
       
@@ -58,10 +61,11 @@ const AppLayout: React.FC = () => {
           description: "Ya hay una entrada abierta para este empleado",
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
 
-      await apiService.addLog(employeeId, type);
+      await apiService.addLog(employeeId, type, undefined, 'Automático');
       await loadData();
       
       const employee = employees.find(e => e.id === employeeId);
@@ -77,6 +81,44 @@ const AppLayout: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleManualClockInSubmit = async () => {
+    if (!employeeForManualClockIn || !manualClockInTime) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa la hora de entrada",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Add the manual clock-in
+      await apiService.addLog(employeeForManualClockIn, 'ENTRADA', new Date(manualClockInTime).toISOString(), 'Manual');
+      
+      // Immediately add the clock-out
+      await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
+      
+      await loadData();
+      const employee = employees.find(e => e.id === employeeForManualClockIn);
+      toast({
+        title: "Éxito",
+        description: `Entrada manual y salida registrada para ${employee?.name}`,
+      });
+    } catch (error) {
+        toast({
+            title: "Error",
+            description: "No se pudo registrar la entrada manual",
+            variant: "destructive"
+        });
+    } finally {
+        setShowManualClockIn(false);
+        setEmployeeForManualClockIn(null);
+        setManualClockInTime('');
+        setLoading(false);
     }
   };
 
@@ -234,6 +276,25 @@ const AppLayout: React.FC = () => {
       </div>
       
       <Toaster />
+      <Dialog open={showManualClockIn} onOpenChange={setShowManualClockIn}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Entrada Manual Olvidada</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>No se encontró una entrada abierta. Por favor, ingresa la hora de entrada para registrar tu salida.</p>
+            <Input
+              type="datetime-local"
+              value={manualClockInTime}
+              onChange={(e) => setManualClockInTime(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualClockIn(false)}>Cancelar</Button>
+            <Button onClick={handleManualClockInSubmit}>Registrar Entrada y Salida</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
