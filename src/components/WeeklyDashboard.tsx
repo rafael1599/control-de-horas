@@ -23,25 +23,29 @@ interface WeeklyDashboardProps {
 const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) => {
   const getWeeklyHours = () => {
     const now = new Date();
+    const dayOfWeek = now.getDay(); // Sunday - 0, Monday - 1, ...
+    const numDay = now.getDate();
+
     const currentWeekStart = new Date(now);
-    currentWeekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+    currentWeekStart.setDate(numDay - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Adjust for Sunday
     currentWeekStart.setHours(0, 0, 0, 0);
 
     const employeeHours: Record<string, { hours: number; employee: Employee }> = {};
 
-    // Group logs by employee
     const employeeLogs: Record<string, TimeLog[]> = {};
-    logs.forEach(log => {
-      const logDate = new Date(log.timestamp);
-      if (logDate >= currentWeekStart) {
-        if (!employeeLogs[log.employeeId]) {
-          employeeLogs[log.employeeId] = [];
-        }
-        employeeLogs[log.employeeId].push(log);
-      }
-    });
+    if (logs) {
+        logs.forEach(log => {
+            const logDate = new Date(log.timestamp);
+            if (logDate >= currentWeekStart) {
+                if (!employeeLogs[log.employeeId]) {
+                employeeLogs[log.employeeId] = [];
+                }
+                employeeLogs[log.employeeId].push(log);
+            }
+        });
+    }
 
-    // Calculate hours for each employee
+
     Object.entries(employeeLogs).forEach(([employeeId, empLogs]) => {
       const employee = employees.find(e => e.id === employeeId);
       if (!employee) return;
@@ -77,7 +81,7 @@ const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) =>
       <h2 className="text-2xl font-bold text-slate-800">Resumen Semanal</h2>
       
       {weeklyData.length === 0 ? (
-        <p className="text-gray-500">No hay registros para esta semana</p>
+        <p className="text-gray-500">No hay registros para esta semana.</p>
       ) : (
         <Table>
           <TableHeader>
