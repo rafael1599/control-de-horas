@@ -9,9 +9,8 @@ import { apiService, Employee, TimeLog } from '@/services/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { DateTimePicker } from './ui/DateTimePicker';
-import { subHours, differenceInMinutes, format } from 'date-fns';
+import { subHours, differenceInMinutes, format, differenceInHours } from 'date-fns'; // Importar differenceInHours
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
-
 
 const AppLayout: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -26,8 +25,10 @@ const AppLayout: React.FC = () => {
   const [pendingClockInData, setPendingClockInData] = useState<{ employeeId: string, type: 'ENTRADA' | 'SALIDA' } | null>(null);
   const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
   
-  // Nuevo estado para la advertencia de turno completado
   const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
+  
+  // Nuevo estado para la advertencia de turno largo
+  const [showLongTurnWarning, setShowLongTurnWarning] = useState(false);
 
 
   const { toast } = useToast();
@@ -90,18 +91,21 @@ const AppLayout: React.FC = () => {
       const employeeLogs = logs.filter(log => log.employeeId === employeeId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       const lastLog = employeeLogs[0];
       
-      // Lógica de SALIDA modificada
       if (type === 'SALIDA') {
         if (!lastLog) {
-            // Caso 1: Nunca ha registrado nada, necesita entrada manual.
             setEmployeeForManualClockIn(employeeId);
             setManualClockInTime(subHours(new Date(), 8));
             setShowManualClockIn(true);
         } else if (lastLog.type === 'SALIDA') {
-            // Caso 2: Su último registro ya fue una salida, turno completado.
             setShowTurnCompletedWarning(true);
-        } else {
-            // Caso 3: Su último registro fue una entrada, procede a registrar la salida.
+        } else { // El último registro es una ENTRADA
+             const hoursDifference = differenceInHours(new Date(), new Date(lastLog.timestamp));
+             if (hoursDifference > 18) {
+                 setShowLongTurnWarning(true);
+                 setLoading(false);
+                 return;
+             }
+             
              await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
              await loadData();
              const employee = employees.find(e => e.id === employeeId);
@@ -379,7 +383,6 @@ const AppLayout: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* NUEVO DIÁLOGO DE ADVERTENCIA */}
       <AlertDialog open={showTurnCompletedWarning} onOpenChange={setShowTurnCompletedWarning}>
           <AlertDialogContent>
               <AlertDialogHeader>
@@ -390,6 +393,21 @@ const AppLayout: React.FC = () => {
               </AlertDialogHeader>
               <AlertDialogFooter>
                   <AlertDialogAction onClick={() => setShowTurnCompletedWarning(false)}>Entendido</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* NUEVO DIÁLOGO PARA TURNO LARGO */}
+      <AlertDialog open={showLongTurnWarning} onOpenChange={setShowLongTurnWarning}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Turno Excesivamente Largo</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      El sistema ha detectado que tu turno abierto ha superado las 18 horas. No se puede registrar la salida automáticamente. Por favor, contacta a un administrador para revisar y corregir tu registro.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setShowLongTurnWarning(false)}>Entendido</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>
