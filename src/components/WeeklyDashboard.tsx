@@ -1,19 +1,9 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-interface Employee {
-  id: string;
-  name: string;
-  rate: number;
-}
-
-interface TimeLog {
-  timestamp: string;
-  employeeId: string;
-  type: 'ENTRADA' | 'SALIDA';
-  source: string;
-  row: number;
-}
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { useWeeklyDashboard } from '@/hooks/useWeeklyDashboard';
+import { type Employee, type TimeLog } from '@/services/api';
 
 interface WeeklyDashboardProps {
   employees: Employee[];
@@ -21,87 +11,73 @@ interface WeeklyDashboardProps {
 }
 
 const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) => {
-  const getWeeklyHours = () => {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // Sunday - 0, Monday - 1, ...
-    const numDay = now.getDate();
-
-    const currentWeekStart = new Date(now);
-    currentWeekStart.setDate(numDay - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)); // Adjust for Sunday
-    currentWeekStart.setHours(0, 0, 0, 0);
-
-    const employeeHours: Record<string, { hours: number; employee: Employee }> = {};
-
-    const employeeLogs: Record<string, TimeLog[]> = {};
-    if (logs) {
-        logs.forEach(log => {
-            const logDate = new Date(log.timestamp);
-            if (logDate >= currentWeekStart) {
-                if (!employeeLogs[log.employeeId]) {
-                employeeLogs[log.employeeId] = [];
-                }
-                employeeLogs[log.employeeId].push(log);
-            }
-        });
-    }
-
-
-    Object.entries(employeeLogs).forEach(([employeeId, empLogs]) => {
-      const employee = employees.find(e => e.id === employeeId);
-      if (!employee) return;
-
-      empLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      
-      let totalHours = 0;
-      let lastEntry: Date | null = null;
-
-      empLogs.forEach(log => {
-        if (log.type === 'ENTRADA') {
-          lastEntry = new Date(log.timestamp);
-        } else if (log.type === 'SALIDA' && lastEntry) {
-          const exit = new Date(log.timestamp);
-          const hours = (exit.getTime() - lastEntry.getTime()) / (1000 * 60 * 60);
-          totalHours += hours;
-          lastEntry = null;
-        }
-      });
-
-      if (totalHours > 0) {
-        employeeHours[employeeId] = { hours: totalHours, employee };
-      }
-    });
-
-    return Object.values(employeeHours).sort((a, b) => b.hours - a.hours);
-  };
-
-  const weeklyData = getWeeklyHours();
+  const {
+    weeklyData,
+    openShifts,
+    weekDisplay,
+    weekOffset,
+    goToPreviousWeek,
+    goToNextWeek,
+  } = useWeeklyDashboard(employees, logs);
 
   return (
-    <div className="space-y-4 p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold text-slate-800">Resumen Semanal</h2>
-      
-      {weeklyData.length === 0 ? (
-        <p className="text-gray-500">No hay registros para esta semana.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Empleado</TableHead>
-              <TableHead>Horas</TableHead>
-              <TableHead>Pago Estimado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {weeklyData.map(({ employee, hours }) => (
-              <TableRow key={employee.id}>
-                <TableCell className="font-medium">{employee.name}</TableCell>
-                <TableCell>{hours.toFixed(2)}</TableCell>
-                <TableCell>${(hours * employee.rate).toFixed(2)}</TableCell>
-              </TableRow>
+    <div className="space-y-6 p-6 bg-white rounded-lg shadow-lg">
+      {/* Active Shifts Section */}
+      {openShifts.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xl font-semibold text-slate-800">Turnos Activos</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {openShifts.map(shift => (
+              <div key={shift.employeeId} className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+                <p className="font-semibold text-blue-900">{shift.employeeName}</p>
+                <div className="flex items-center gap-2 text-blue-700 mt-1">
+                  <Clock className="h-4 w-4" />
+                  <p className="font-mono text-lg">{shift.liveDuration}</p>
+                </div>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        </div>
       )}
+
+      {/* Weekly Summary Section */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-slate-800">Resumen Semanal</h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={goToPreviousWeek}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="font-semibold text-slate-600 text-center w-32">{weekDisplay}</span>
+            <Button variant="outline" size="icon" onClick={goToNextWeek} disabled={weekOffset === 0}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {weeklyData.length === 0 ? (
+          <p className="text-gray-500">No hay registros cerrados para esta semana.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empleado</TableHead>
+                <TableHead>Horas</TableHead>
+                <TableHead>Pago Estimado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {weeklyData.map(({ employee, hours }) => (
+                <TableRow key={employee.id}>
+                  <TableCell className="font-medium">{employee.name}</TableCell>
+                  <TableCell>{hours.toFixed(2)}</TableCell>
+                  <TableCell>${Math.round(hours * employee.rate)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 };
