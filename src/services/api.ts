@@ -29,7 +29,7 @@ export const apiService = {
     return response.json();
   },
 
-  async addLog(employeeId: string, type: 'ENTRADA' | 'SALIDA', timestamp?: string, entryType: 'Manual' | 'Automático' = 'Automático'): Promise<void> {
+  async addLog(employeeId: string, type: 'ENTRADA' | 'SALIDA', timestamp?: string, source: 'Manual' | 'Automático' = 'Automático'): Promise<void> {
     const formData = new FormData();
     formData.append('action', 'addLog');
     formData.append('employeeId', employeeId);
@@ -37,7 +37,7 @@ export const apiService = {
     if (timestamp) {
       formData.append('timestamp', timestamp);
     }
-    formData.append('entryType', entryType);
+    formData.append('source', source);
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -128,6 +128,40 @@ export const apiService = {
 
     if (!response.ok) {
       throw new Error('Failed to delete log');
+    }
+  },
+
+  async deleteShift(entryRow: number, exitRow: number): Promise<void> {
+    const formData = new FormData();
+    formData.append('action', 'deleteShift');
+    formData.append('entryRow', entryRow.toString());
+    formData.append('exitRow', exitRow.toString());
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete shift');
+    }
+  },
+
+  async updateShift(entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string): Promise<void> {
+    const formData = new FormData();
+    formData.append('action', 'updateShift');
+    formData.append('entryRow', entryRow.toString());
+    formData.append('exitRow', exitRow.toString());
+    formData.append('entryTimestamp', entryTimestamp);
+    formData.append('exitTimestamp', exitTimestamp);
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update shift');
     }
   }
 };

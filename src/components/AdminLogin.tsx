@@ -1,27 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Settings } from 'lucide-react';
+import { useAppContext } from '@/contexts/AppContext';
 
-interface AdminLoginProps {
-  onLogin: () => void;
-}
-
-const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
+const AdminLogin: React.FC = () => {
+  const { isAdmin, login, loginError } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+
+  useEffect(() => {
+    // If the user successfully logs in (isAdmin becomes true), close the dialog.
+    if (isAdmin && isOpen) {
+      setIsOpen(false);
+    }
+  }, [isAdmin, isOpen]);
 
   const handleLogin = () => {
-    if (password === '1111') {
-      onLogin();
-      setIsOpen(false);
-      setPassword('');
-      setError('');
-    } else {
-      setError('Contraseña incorrecta');
-    }
+    login(password);
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
+    setPassword('');
+    // In a future iteration, we might want a function in the context to clear the loginError.
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -29,6 +32,11 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
       handleLogin();
     }
   };
+
+  // Don't render the login button if the user is already an admin
+  if (isAdmin) {
+    return null;
+  }
 
   return (
     <>
@@ -54,18 +62,14 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               onKeyPress={handleKeyPress}
             />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
             <div className="flex gap-2">
               <Button onClick={handleLogin} className="flex-1">
                 Ingresar
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => {
-                  setIsOpen(false);
-                  setPassword('');
-                  setError('');
-                }} 
+                onClick={handleCancel} 
                 className="flex-1"
               >
                 Cancelar

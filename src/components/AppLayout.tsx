@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
 import EmployeeClockIn from './EmployeeClockIn';
 import WeeklyDashboard from './WeeklyDashboard';
 import AdminLogin from './AdminLogin';
@@ -9,51 +8,45 @@ import { apiService, Employee, TimeLog } from '@/services/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { DateTimePicker } from './ui/DateTimePicker';
-import { subHours, differenceInMinutes, format, differenceInHours } from 'date-fns'; // Importar differenceInHours
+import { subHours, differenceInMinutes, format, differenceInHours } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
+import { useAppContext } from '@/contexts/AppContext';
 
 const AppLayout: React.FC = () => {
+  const { isAdmin, logout } = useAppContext();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [logs, setLogs] = useState<TimeLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showManualClockIn, setShowManualClockIn] = useState(false);
   const [employeeForManualClockIn, setEmployeeForManualClockIn] = useState<string | null>(null);
   const [manualClockInTime, setManualClockInTime] = useState<Date | undefined>(undefined);
-  
   const [showClockInWarning, setShowClockInWarning] = useState(false);
   const [pendingClockInData, setPendingClockInData] = useState<{ employeeId: string, type: 'ENTRADA' | 'SALIDA' } | null>(null);
   const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
-  
   const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
-  
-  // Nuevo estado para la advertencia de turno largo
   const [showLongTurnWarning, setShowLongTurnWarning] = useState(false);
-
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiService.fetchData();
       setEmployees(data.employees);
       setLogs(data.logs);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los datos",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "No se pudieron cargar los datos", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  };
-  
+  }, [toast]);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      loadData();
+    }
+  }, [isAdmin, loadData]);
+
   const proceedWithClockIn = async (employeeId: string) => {
       await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
       await loadData();
@@ -93,12 +86,14 @@ const AppLayout: React.FC = () => {
       
       if (type === 'SALIDA') {
         if (!lastLog) {
+            // Case 1: No previous log found, assume forgotten clock-in and open manual entry dialog.
             setEmployeeForManualClockIn(employeeId);
-            setManualClockInTime(subHours(new Date(), 8));
+            setManualClockInTime(subHours(new Date(), 8)); // Pre-fill with a guess
             setShowManualClockIn(true);
         } else if (lastLog.type === 'SALIDA') {
+            // Case 2: Last action was a clock-out, so they can't clock-out again.
             setShowTurnCompletedWarning(true);
-        } else { // El último registro es una ENTRADA
+        } else { // Case 3: Last log was a clock-in, proceed with clock-out.
              const hoursDifference = differenceInHours(new Date(), new Date(lastLog.timestamp));
              if (hoursDifference > 18) {
                  setShowLongTurnWarning(true);
@@ -193,113 +188,8 @@ const AppLayout: React.FC = () => {
         setLoading(false);
     }
   };
-  
-  const handleAddEmployee = async (employee: Employee) => {
-    try {
-      setLoading(true);
-      await apiService.addEmployee(employee);
-      await loadData();
-      toast({
-        title: "Éxito",
-        description: "Empleado agregado correctamente",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo agregar el empleado",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleUpdateEmployee = async (employee: Employee) => {
-    try {
-      setLoading(true);
-      await apiService.updateEmployee(employee);
-      await loadData();
-      toast({
-        title: "Éxito",
-        description: "Empleado actualizado correctamente",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el empleado",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteEmployee = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este empleado?')) return;
-    
-    try {
-      setLoading(true);
-      await apiService.deleteEmployee(id);
-      await loadData();
-      toast({
-        title: "Éxito",
-        description: "Empleado eliminado correctamente",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el empleado",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUpdateLog = async (log: Partial<TimeLog> & { row: number }) => {
-    try {
-      setLoading(true);
-      await apiService.updateLog(log);
-      await loadData();
-      toast({
-        title: "Éxito",
-        description: "Registro actualizado correctamente",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el registro",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteLog = async (row: number) => {
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return;
-    
-    try {
-      setLoading(true);
-      await apiService.deleteLog(row);
-      await loadData();
-      toast({
-        title: "Éxito",
-        description: "Registro eliminado correctamente",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el registro",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  if (loading && employees.length === 0) {
+  if (loading && employees.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -321,21 +211,11 @@ const AppLayout: React.FC = () => {
         </div>
       )}
 
-      <AdminLogin onLogin={() => setIsAdmin(true)} />
+      <AdminLogin />
 
       <div className="container mx-auto p-4 space-y-6">
         {isAdmin ? (
-          <AdminPanel
-            employees={employees}
-            logs={logs}
-            onAddEmployee={handleAddEmployee}
-            onUpdateEmployee={handleUpdateEmployee}
-            onDeleteEmployee={handleDeleteEmployee}
-            onUpdateLog={handleUpdateLog}
-            onDeleteLog={handleDeleteLog}
-            onBack={() => setIsAdmin(false)}
-            loading={loading}
-          />
+          <AdminPanel onBack={logout} />
         ) : (
           <>
             <EmployeeClockIn
@@ -348,8 +228,6 @@ const AppLayout: React.FC = () => {
         )}
       </div>
       
-      <Toaster />
-
       <Dialog open={showManualClockIn} onOpenChange={setShowManualClockIn}>
         <DialogContent>
           <DialogHeader>
@@ -397,7 +275,6 @@ const AppLayout: React.FC = () => {
           </AlertDialogContent>
       </AlertDialog>
       
-      {/* NUEVO DIÁLOGO PARA TURNO LARGO */}
       <AlertDialog open={showLongTurnWarning} onOpenChange={setShowLongTurnWarning}>
           <AlertDialogContent>
               <AlertDialogHeader>
