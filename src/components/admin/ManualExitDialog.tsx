@@ -5,16 +5,11 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/hooks/use-toast';
 import { addHours, isAfter, isBefore } from 'date-fns';
 import { apiService } from '@/services/api';
+import { type ProcessedShift } from '@/types';
 
 // Assuming ProcessedShift is defined in ShiftsTable and imported here
 // For now, let's define a minimal version of it.
-interface ProcessedShift {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  entryTimestamp: string;
-  entryRow: number;
-}
+
 
 interface ManualExitDialogProps {
   isOpen: boolean;

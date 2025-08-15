@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Plus } from 'lucide-react';
-import { Employee } from '@/services/api';
+import { type Employee } from '@/types';
 
 interface AddEmployeeFormProps {
   onAddEmployee: (employee: Omit<Employee, 'id'> & { id: string }) => Promise<void>;

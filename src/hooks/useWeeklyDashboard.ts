@@ -2,19 +2,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { startOfWeek, endOfWeek, addWeeks, format, set, differenceInSeconds } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { type Employee, type TimeLog } from '@/services/api';
+import { type Employee, type TimeLog, type OpenShift } from '@/types';
 
-export interface WeeklyHourSummary {
-  hours: number;
-  employee: Employee;
-}
 
-export interface OpenShift {
-  employeeId: string;
-  employeeName: string;
-  entryTimestamp: Date;
-  liveDuration: string;
-}
 
 // Helper to get the start of our specific week (Monday 7 AM)
 const getCustomWeekStart = (date: Date): Date => {

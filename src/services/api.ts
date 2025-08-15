@@ -1,24 +1,6 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycby31Vba4JDQPbAnaPFrBe53Ch3QvLVNNlRjgvqdaUasuJJNccXInE9oIMBZdgG6y9hrxA/exec';
 
-export interface Employee {
-  id: string;
-  name: string;
-  rate: number;
-}
-
-export interface TimeLog {
-  timestamp: string;
-  employeeId: string;
-  type: 'ENTRADA' | 'SALIDA';
-  source: string;
-  row: number;
-  entryType?: 'Manual' | 'Automático';
-}
-
-export interface ApiResponse {
-  employees: Employee[];
-  logs: TimeLog[];
-}
+import { Employee, TimeLog, ApiResponse } from '@/types';
 
 export const apiService = {
   async fetchData(): Promise<ApiResponse> {

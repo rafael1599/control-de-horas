@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trash2, Edit, Plus } from 'lucide-react';
-import { Employee, TimeLog, apiService } from '@/services/api';
+import { apiService } from '@/services/api';
+import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { differenceInHours, format } from 'date-fns';
 import ManualExitDialog from './ManualExitDialog';
 import AddShiftDialog from './AddShiftDialog';
@@ -15,17 +16,7 @@ interface ShiftsTableProps {
   onCorrectionComplete: () => void; // To reload data
 }
 
-export interface ProcessedShift {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  entryTimestamp: string;
-  exitTimestamp?: string;
-  duration?: number;
-  isAnomalous: boolean;
-  entryRow: number;
-  exitRow?: number;
-}
+
 
 const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete }) => {
   const [isCorrectionDialogOpen, setIsCorrectionDialogOpen] = useState(false);

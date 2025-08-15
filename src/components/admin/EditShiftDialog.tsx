@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/hooks/use-toast';
 import { isAfter } from 'date-fns';
-import { type ProcessedShift } from './ShiftsTable';
+import { type ProcessedShift } from '@/types';
 import { Loader2 } from 'lucide-react';
 
 interface EditShiftDialogProps {

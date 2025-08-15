@@ -5,7 +5,8 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { isAfter } from 'date-fns';
-import { apiService, Employee } from '@/services/api';
+import { apiService } from '@/services/api';
+import { type Employee } from '@/types';
 
 interface AddShiftDialogProps {
   isOpen: boolean;

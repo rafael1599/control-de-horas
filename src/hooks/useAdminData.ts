@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { apiService, Employee, TimeLog, ApiResponse } from '@/services/api';
+import { apiService } from '@/services/api';
+import { type Employee, type TimeLog, type ApiResponse } from '@/types';
 
 export const useAdminData = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
