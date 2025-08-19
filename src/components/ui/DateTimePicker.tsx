@@ -1,5 +1,5 @@
 import * as React from "react";
-import { format, setHours, setMinutes, getHours, getMinutes, getSeconds, setSeconds, isBefore, isAfter, setDate, setMonth, setYear, startOfDay } from "date-fns";
+import { format, setHours, setMinutes, getHours, getMinutes, getSeconds, setSeconds, isBefore, isAfter, startOfDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,34 +41,15 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
     setIsPopoverOpen(false);
   };
 
-  const handleTimeChange = (value: string, unit: 'hours' | 'minutes' | 'ampm') => {
+  const handleTimeChange = (value: string, unit: 'hours' | 'minutes') => {
     if (!date) return;
 
     let newDate = new Date(date);
 
     if (unit === 'hours') {
-      const newHours12 = parseInt(value, 10);
-      const currentHours24 = getHours(newDate);
-      const isPM = currentHours24 >= 12;
-
-      if (isPM && newHours12 !== 12) {
-        newDate = setHours(newDate, newHours12 + 12);
-      } else if (!isPM && newHours12 === 12) {
-        newDate = setHours(newDate, 0);
-      } else {
-        newDate = setHours(newDate, newHours12);
-      }
+      newDate = setHours(newDate, parseInt(value, 10));
     } else if (unit === 'minutes') {
       newDate = setMinutes(newDate, parseInt(value, 10));
-    } else if (unit === 'ampm') {
-      const currentHours24 = getHours(newDate);
-      const isTryingToSetPM = value === 'PM';
-
-      if (isTryingToSetPM && currentHours24 < 12) {
-        newDate = setHours(newDate, currentHours24 + 12);
-      } else if (!isTryingToSetPM && currentHours24 >= 12) {
-        newDate = setHours(newDate, currentHours24 - 12);
-      }
     }
 
     let finalDate = newDate;
@@ -92,10 +73,7 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
       return false;
     }, [minDate, maxDate]);
 
-  const hours = date ? getHours(date) : 0;
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  let displayHours = hours % 12;
-  if (displayHours === 0) displayHours = 12;
+  const hours = date ? getHours(date) : 0; // Use 24-hour format directly
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -123,12 +101,12 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
         </PopoverContent>
       </Popover>
 
-      <Select value={displayHours.toString()} onValueChange={(val) => handleTimeChange(val, 'hours')}>
+      <Select value={hours.toString()} onValueChange={(val) => handleTimeChange(val, 'hours')}>
         <SelectTrigger className="w-[80px]">
           <SelectValue placeholder="Hour" />
         </SelectTrigger>
         <SelectContent>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map(h => <SelectItem key={h} value={h.toString()}>{h}</SelectItem>)}
+          {Array.from({ length: 24 }, (_, i) => i).map(h => <SelectItem key={h} value={h.toString()}>{h.toString().padStart(2, '0')}</SelectItem>)}
         </SelectContent>
       </Select>
       <span>:</span>
@@ -138,16 +116,6 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
         </SelectTrigger>
         <SelectContent>
           {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-        </SelectContent>
-      </Select>
-
-      <Select value={ampm} onValueChange={(val) => handleTimeChange(val, 'ampm')}>
-        <SelectTrigger className="w-[80px]">
-          <SelectValue placeholder="AM/PM" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="AM">AM</SelectItem>
-          <SelectItem value="PM">PM</SelectItem>
         </SelectContent>
       </Select>
     </div>
