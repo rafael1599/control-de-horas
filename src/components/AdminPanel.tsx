@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddEmployeeForm from './admin/AddEmployeeForm';
 import EmployeesTable from './admin/EmployeesTable';
 import ShiftsTable from './admin/ShiftsTable';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useEmployees } from '@/contexts/EmployeesContext';
+import { useShifts } from '@/contexts/ShiftsContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface AdminPanelProps {
@@ -14,14 +15,20 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const {
     employees,
-    logs,
-    loading,
+    loading: loadingEmployees,
     addEmployee,
     updateEmployee,
     deleteEmployee,
+  } = useEmployees();
+
+  const {
+    shifts,
+    loading: loadingShifts,
     updateShift,
-    reload,
-  } = useAdminData();
+    reloadShifts,
+  } = useShifts();
+
+  const loading = loadingEmployees || loadingShifts;
 
   if (loading && employees.length === 0) { // Improved loading state
     return (
@@ -60,10 +67,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
         <TabsContent value="logs" className="space-y-4">
           <ShiftsTable 
-            logs={logs} 
+            logs={shifts} 
             employees={employees} 
             onUpdateShift={updateShift}
-            onCorrectionComplete={reload}
+            onCorrectionComplete={reloadShifts}
           />
         </TabsContent>
       </Tabs>

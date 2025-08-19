@@ -1,9 +1,9 @@
-
 import { useState, useMemo, useEffect } from 'react';
 import { startOfWeek, endOfWeek, addWeeks, format, set, differenceInSeconds } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { type Employee, type TimeLog, type OpenShift } from '@/types';
-
+import { useEmployees } from '@/contexts/EmployeesContext';
+import { useShifts } from '@/contexts/ShiftsContext';
 
 
 // Helper to get the start of our specific week (Monday 7 AM)
@@ -21,7 +21,10 @@ const formatDuration = (totalSeconds: number): string => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
+export const useWeeklyDashboard = () => {
+  const { employees } = useEmployees();
+  const { shifts: logs } = useShifts();
+
   const [weekOffset, setWeekOffset] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 

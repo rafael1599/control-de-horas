@@ -11,13 +11,14 @@ import { Button } from '@/components/ui/button';
 import { DateTimePicker } from './ui/DateTimePicker';
 import { subHours, differenceInMinutes, format, differenceInHours } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
-import { useAppContext } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEmployees } from '@/contexts/EmployeesContext';
+import { useShifts } from '@/contexts/ShiftsContext';
 
 const AppLayout: React.FC = () => {
-  const { isAdmin, logout } = useAppContext();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [logs, setLogs] = useState<TimeLog[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { isAdmin, logout } = useAuth();
+  const { employees, loading: loadingEmployees, reloadEmployees } = useEmployees();
+  const { shifts: logs, loading: loadingShifts, reloadShifts } = useShifts();
   const [showManualClockIn, setShowManualClockIn] = useState(false);
   const [employeeForManualClockIn, setEmployeeForManualClockIn] = useState<string | null>(null);
   const [manualClockInTime, setManualClockInTime] = useState<Date | undefined>(undefined);
@@ -26,31 +27,16 @@ const AppLayout: React.FC = () => {
   const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
   const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
   const [showLongTurnWarning, setShowLongTurnWarning] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false); // State for immediate feedback
 
   const { toast } = useToast();
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await apiService.fetchData();
-      setEmployees(data.employees);
-      setLogs(data.logs);
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudieron cargar los datos", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    if (!isAdmin) {
-      loadData();
-    }
-  }, [isAdmin, loadData]);
+  // Combine loading states from contexts and local loading for actions
+  const overallLoading = loadingEmployees || loadingShifts || isActionLoading;
 
   const proceedWithClockIn = async (employeeId: string) => {
       await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
-      await loadData();
+      await reloadShifts();
       
       const employee = employees.find(e => e.id === employeeId);
       toast({
@@ -61,8 +47,8 @@ const AppLayout: React.FC = () => {
   
   const handleClockInWarningConfirm = async () => {
     if (pendingClockInData) {
+        setIsActionLoading(true);
         try {
-            setLoading(true);
             setShowClockInWarning(false);
             await proceedWithClockIn(pendingClockInData.employeeId);
         } catch (error) {
@@ -72,16 +58,15 @@ const AppLayout: React.FC = () => {
                 variant: "destructive"
             });
         } finally {
-            setLoading(false);
             setPendingClockInData(null);
+            setIsActionLoading(false);
         }
     }
   }
 
   const handleClockAction = async (employeeId: string, type: 'ENTRADA' | 'SALIDA') => {
+    setIsActionLoading(true);
     try {
-      setLoading(true);
-      
       const employeeLogs = logs.filter(log => log.employeeId === employeeId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       const lastLog = employeeLogs[0];
       
@@ -94,23 +79,21 @@ const AppLayout: React.FC = () => {
         } else if (lastLog.type === 'SALIDA') {
             // Case 2: Last action was a clock-out, so they can't clock-out again.
             setShowTurnCompletedWarning(true);
-        } else { // Case 3: Last log was a clock-in, proceed with clock-out.
+        } else {
              const hoursDifference = differenceInHours(new Date(), new Date(lastLog.timestamp));
              if (hoursDifference > 18) {
                  setShowLongTurnWarning(true);
-                 setLoading(false);
                  return;
              }
              
              await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
-             await loadData();
+             await reloadShifts();
              const employee = employees.find(e => e.id === employeeId);
              toast({
                 title: "Éxito",
                 description: `SALIDA registrada para ${employee?.name}`,
             });
         }
-        setLoading(false);
         return;
       }
       
@@ -120,7 +103,6 @@ const AppLayout: React.FC = () => {
           description: "Ya hay una entrada abierta para este empleado",
           variant: "destructive"
         });
-        setLoading(false);
         return;
       }
       
@@ -130,13 +112,12 @@ const AppLayout: React.FC = () => {
               setLastClockOutTime(format(new Date(lastLog.timestamp), 'p'));
               setPendingClockInData({ employeeId, type });
               setShowClockInWarning(true);
-              setLoading(false);
               return;
           }
       }
       
       await apiService.addLog(employeeId, type, undefined, 'Automático');
-      await loadData();
+      await reloadShifts();
       
       const employee = employees.find(e => e.id === employeeId);
       toast({
@@ -150,7 +131,7 @@ const AppLayout: React.FC = () => {
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+        setIsActionLoading(false);
     }
   };
 
@@ -164,14 +145,15 @@ const AppLayout: React.FC = () => {
       return;
     }
 
+    setIsActionLoading(true);
     try {
-      setLoading(true);
       setShowManualClockIn(false);
       
       await apiService.addLog(employeeForManualClockIn, 'ENTRADA', manualClockInTime.toISOString(), 'Manual');
       await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
       
-      await loadData();
+      await reloadShifts();
+      await reloadEmployees();
       const employee = employees.find(e => e.id === employeeForManualClockIn);
       toast({
         title: "Éxito",
@@ -186,11 +168,11 @@ const AppLayout: React.FC = () => {
     } finally {
         setEmployeeForManualClockIn(null);
         setManualClockInTime(undefined);
-        setLoading(false);
+        setIsActionLoading(false);
     }
   };
 
-  if (loading && employees.length === 0 && !isAdmin) {
+  if (overallLoading && employees.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -203,7 +185,7 @@ const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {loading && (
+      {overallLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg text-center shadow-lg">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -222,7 +204,7 @@ const AppLayout: React.FC = () => {
             <EmployeeClockIn
               employees={employees}
               onClockAction={handleClockAction}
-              loading={loading}
+              loading={overallLoading}
             />
             <WeeklyDashboard employees={employees} logs={logs} />
           </>

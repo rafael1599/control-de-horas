@@ -4,6 +4,7 @@ import { Employee, TimeLog, ApiResponse } from '@/types';
 
 export const apiService = {
   async fetchData(): Promise<ApiResponse> {
+    console.log('Attempting to fetch data from API_URL:', API_URL);
     const response = await fetch(API_URL);
     if (!response.ok) {
       throw new Error('Failed to fetch data');

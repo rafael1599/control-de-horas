@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Settings } from 'lucide-react';
-import { useAppContext } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminLogin: React.FC = () => {
-  const { isAdmin, login, loginError } = useAppContext();
+  const { isAdmin, login, loginError } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [password, setPassword] = useState('');
 

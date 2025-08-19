@@ -150,9 +150,14 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
                 </TableCell>
                 <TableCell className="flex gap-2">
                   {shift.isAnomalous && !shift.exitTimestamp ? (
-                    <Button size="sm" variant="destructive" onClick={() => handleOpenDialog('correct', shift)}>
-                      Corregir Turno
-                    </Button>
+                    <>
+                      <Button size="sm" variant="destructive" onClick={() => handleOpenDialog('correct', shift)}>
+                        Corregir Turno
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteShift(shift)}>
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
                   ) : shift.exitTimestamp ? (
                     <>
                         <Button size="sm" variant="outline" onClick={() => handleOpenDialog('edit', shift)}>
