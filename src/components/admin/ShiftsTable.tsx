@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Trash2, Edit, Plus } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
-import { differenceInHours, format } from 'date-fns';
+import { differenceInHours, differenceInMinutes, format } from 'date-fns';
+import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
 import ManualExitDialog from './ManualExitDialog';
 import AddShiftDialog from './AddShiftDialog';
 import EditShiftDialog from './EditShiftDialog';
@@ -15,8 +16,6 @@ interface ShiftsTableProps {
   onUpdateShift: (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => Promise<void>;
   onCorrectionComplete: () => void; // To reload data
 }
-
-
 
 const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete }) => {
   const [isCorrectionDialogOpen, setIsCorrectionDialogOpen] = useState(false);
@@ -48,15 +47,14 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
       } else if (log.type === 'SALIDA') {
         if (openShifts.has(log.employeeId)) {
           const openShift = openShifts.get(log.employeeId)!;
-          const duration = differenceInHours(new Date(log.timestamp), new Date(openShift.timestamp));
           shifts.push({
             id: `${openShift.employeeId}-${openShift.timestamp}`,
             employeeId: openShift.employeeId,
             employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
             entryTimestamp: openShift.timestamp,
             exitTimestamp: log.timestamp,
-            duration,
-            isAnomalous: duration > 23,
+            duration: differenceInHours(new Date(log.timestamp), new Date(openShift.timestamp)),
+            isAnomalous: differenceInMinutes(new Date(log.timestamp), new Date(openShift.timestamp)) > MAX_SHIFT_MINUTES,
             entryRow: openShift.row,
             exitRow: log.row,
           });
@@ -68,13 +66,12 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
     });
 
     openShifts.forEach(openShift => {
-      const duration = differenceInHours(new Date(), new Date(openShift.timestamp));
       shifts.push({
         id: `${openShift.employeeId}-${openShift.timestamp}`,
         employeeId: openShift.employeeId,
         employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
         entryTimestamp: openShift.timestamp,
-        isAnomalous: duration > 23,
+        isAnomalous: differenceInMinutes(new Date(), new Date(openShift.timestamp)) > MAX_SHIFT_MINUTES,
         entryRow: openShift.row,
       });
     });
@@ -145,7 +142,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
                   {shift.duration !== undefined ? (
                     shift.duration
                   ) : (
-                    shift.isAnomalous ? "> 23h" : '-'
+                    shift.isAnomalous ? `> ${MAX_SHIFT_HOURS}h` : '-'
                   )}
                 </TableCell>
                 <TableCell className="flex gap-2">

@@ -9,11 +9,12 @@ import { type Employee, type TimeLog } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { DateTimePicker } from './ui/DateTimePicker';
-import { subHours, differenceInMinutes, format, differenceInHours } from 'date-fns';
+import { subHours, differenceInMinutes, format } from 'date-fns';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
+import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, FAST_CLOCK_IN_THRESHOLD_MINUTES } from '@/config/rules';
 
 const AppLayout: React.FC = () => {
   const { isAdmin, logout } = useAuth();
@@ -27,11 +28,10 @@ const AppLayout: React.FC = () => {
   const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
   const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
   const [showLongTurnWarning, setShowLongTurnWarning] = useState(false);
-  const [isActionLoading, setIsActionLoading] = useState(false); // State for immediate feedback
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const { toast } = useToast();
 
-  // Combine loading states from contexts and local loading for actions
   const overallLoading = loadingEmployees || loadingShifts || isActionLoading;
 
   const proceedWithClockIn = async (employeeId: string) => {
@@ -72,16 +72,13 @@ const AppLayout: React.FC = () => {
       
       if (type === 'SALIDA') {
         if (!lastLog) {
-            // Case 1: No previous log found, assume forgotten clock-in and open manual entry dialog.
             setEmployeeForManualClockIn(employeeId);
-            setManualClockInTime(subHours(new Date(), 8)); // Pre-fill with a guess
+            setManualClockInTime(subHours(new Date(), 8));
             setShowManualClockIn(true);
         } else if (lastLog.type === 'SALIDA') {
-            // Case 2: Last action was a clock-out, so they can't clock-out again.
             setShowTurnCompletedWarning(true);
         } else {
-             const hoursDifference = differenceInHours(new Date(), new Date(lastLog.timestamp));
-             if (hoursDifference > 18) {
+             if (differenceInMinutes(new Date(), new Date(lastLog.timestamp)) > MAX_SHIFT_MINUTES) {
                  setShowLongTurnWarning(true);
                  return;
              }
@@ -108,7 +105,7 @@ const AppLayout: React.FC = () => {
       
       if (type === 'ENTRADA' && lastLog && lastLog.type === 'SALIDA') {
           const minutesSinceLastClockOut = differenceInMinutes(new Date(), new Date(lastLog.timestamp));
-          if (minutesSinceLastClockOut < 5) { 
+          if (minutesSinceLastClockOut < FAST_CLOCK_IN_THRESHOLD_MINUTES) { 
               setLastClockOutTime(format(new Date(lastLog.timestamp), 'p'));
               setPendingClockInData({ employeeId, type });
               setShowClockInWarning(true);
@@ -263,7 +260,7 @@ const AppLayout: React.FC = () => {
               <AlertDialogHeader>
                   <AlertDialogTitle>Turno Excesivamente Largo</AlertDialogTitle>
                   <AlertDialogDescription>
-                      El sistema ha detectado que tu turno abierto ha superado las 18 horas. No se puede registrar la salida automáticamente. Por favor, contacta a un administrador para revisar y corregir tu registro.
+                      El sistema ha detectado que tu turno abierto ha superado las {MAX_SHIFT_HOURS} horas. No se puede registrar la salida automáticamente. Por favor, contacta a un administrador para revisar y corregir tu registro.
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

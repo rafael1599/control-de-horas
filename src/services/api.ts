@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycby31Vba4JDQPbAnaPFrBe53Ch3QvLVNNlRjgvqdaUasuJJNccXInE9oIMBZdgG6y9hrxA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyBaZcWlF-s8HB0pjfU9FEA-2N7L54_3yIJjpnDDbwjr1PuC9iCdlWX8AsBYfjARCVYaw/exec';
 
 import { Employee, TimeLog, ApiResponse } from '@/types';
 
@@ -146,5 +146,23 @@ export const apiService = {
     if (!response.ok) {
       throw new Error('Failed to update shift');
     }
+  },
+
+  async verifyPassword(password: string): Promise<{ success: boolean }> {
+    const formData = new FormData();
+    formData.append('action', 'verifyAdminPassword');
+    formData.append('password', password);
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Password verification request failed');
+    }
+
+    const result = await response.json();
+    return result.data;
   }
 };

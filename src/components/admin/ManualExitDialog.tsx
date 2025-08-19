@@ -28,7 +28,7 @@ const ManualExitDialog: React.FC<ManualExitDialogProps> = ({ isOpen, onClose, sh
 
   const { minDate, maxDate } = useMemo(() => {
     const min = entryDate;
-    const maxAllowed = addHours(entryDate, 23);
+    const maxAllowed = addHours(entryDate, 18); // Using 18 hours as per our last change
     const now = new Date();
     const max = isAfter(maxAllowed, now) ? now : maxAllowed;
     return { minDate: min, maxDate: max };
@@ -103,7 +103,7 @@ const ManualExitDialog: React.FC<ManualExitDialogProps> = ({ isOpen, onClose, sh
                 />
             </div>
            <p className="text-sm text-muted-foreground">
-            La salida debe ser posterior al inicio del turno, no puede exceder las 23 horas de duración y no puede ser en el futuro.
+            La salida debe ser posterior al inicio del turno, no puede exceder las {MAX_SHIFT_HOURS} horas de duración y no puede ser en el futuro.
           </p>
         </div>
         <DialogFooter>

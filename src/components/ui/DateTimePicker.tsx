@@ -1,5 +1,5 @@
 import * as React from "react";
-import { format, setHours, setMinutes, getHours, getMinutes, getSeconds, setSeconds, isBefore, isAfter, setDate, setMonth, setYear } from "date-fns";
+import { format, setHours, setMinutes, getHours, getMinutes, getSeconds, setSeconds, isBefore, isAfter, setDate, setMonth, setYear, startOfDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,16 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
 
     setDate(finalDate);
   };
+  
+  const handleDisabled = React.useCallback((day: Date) => {
+      if (minDate && isBefore(startOfDay(day), startOfDay(minDate))) {
+        return true;
+      }
+      if (maxDate && isAfter(startOfDay(day), startOfDay(maxDate))) {
+        return true;
+      }
+      return false;
+    }, [minDate, maxDate]);
 
   const hours = date ? getHours(date) : 0;
   const ampm = hours >= 12 ? 'PM' : 'AM';
@@ -107,10 +117,7 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
             mode="single"
             selected={date}
             onSelect={handleDateSelect}
-            disabled={(day) => 
-              (minDate ? isBefore(day, setSeconds(setMinutes(setHours(minDate,0),0),0)) : false) || 
-              (maxDate ? isAfter(day, maxDate) : false)
-            }
+            disabled={handleDisabled}
             initialFocus
           />
         </PopoverContent>

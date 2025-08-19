@@ -1,19 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiService } from '@/services/api'; // Import apiService
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '1111';
 const SESSION_STORAGE_KEY = 'admin_session';
 
 interface AuthContextType {
   isAdmin: boolean;
   loginError: string;
-  login: (password: string) => void;
+  login: (password: string) => Promise<void>; // login is now async
   logout: () => void;
 }
 
 const defaultAuthContext: AuthContextType = {
   isAdmin: false,
   loginError: '',
-  login: () => {},
+  login: async () => {},
   logout: () => {},
 };
 
@@ -39,13 +39,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const login = (password: string) => {
-    if (password === ADMIN_PASSWORD) {
-      setIsAdmin(true);
-      setLoginError('');
-      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ loggedIn: true }));
-    } else {
-      setLoginError('Contraseña incorrecta');
+  const login = async (password: string) => {
+    setLoginError(''); // Clear previous errors
+    try {
+      const { success } = await apiService.verifyPassword(password);
+      if (success) {
+        setIsAdmin(true);
+        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ loggedIn: true }));
+      } else {
+        setLoginError('Contraseña incorrecta');
+      }
+    } catch (error) {
+      console.error("Login API call failed:", error);
+      setLoginError('Error al conectar con el servidor. Inténtalo de nuevo.');
     }
   };
 

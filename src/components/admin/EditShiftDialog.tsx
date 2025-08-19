@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/hooks/use-toast';
-import { isAfter } from 'date-fns';
+import { isAfter, differenceInMinutes } from 'date-fns';
 import { type ProcessedShift } from '@/types';
+import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
 import { Loader2 } from 'lucide-react';
 
 interface EditShiftDialogProps {
@@ -33,13 +34,18 @@ const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, onUp
       return;
     }
 
-    if (isAfter(entryTime, new Date()) || isAfter(exitTime, new Date())) {
-      toast({ title: "Error de Validación", description: "No se pueden registrar horas en el futuro.", variant: "destructive" });
+    if (!isAfter(exitTime, entryTime)) {
+      toast({ title: "Error de Validación", description: "La hora de salida debe ser posterior a la hora de entrada.", variant: "destructive" });
       return;
     }
 
-    if (!isAfter(exitTime, entryTime)) {
-      toast({ title: "Error de Validación", description: "La hora de salida debe ser posterior a la hora de entrada.", variant: "destructive" });
+    if (differenceInMinutes(exitTime, entryTime) > MAX_SHIFT_MINUTES) {
+      toast({ title: "Error de Validación", description: `La duración del turno no puede exceder las ${MAX_SHIFT_HOURS} horas.`, variant: "destructive" });
+      return;
+    }
+
+    if (isAfter(exitTime, new Date())) {
+      toast({ title: "Error de Validación", description: "No se pueden registrar horas en el futuro.", variant: "destructive" });
       return;
     }
 
@@ -82,7 +88,7 @@ const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, onUp
               </div>
               <div className="flex flex-col gap-2">
                 <label className="font-medium">Fecha y Hora de Salida</label>
-                <DateTimePicker date={exitTime} setDate={setExitTime} />
+                <DateTimePicker date={exitTime} setDate={setExitTime} minDate={entryTime} />
               </div>
             </>
           )}

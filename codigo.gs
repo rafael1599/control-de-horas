@@ -51,6 +51,9 @@ function doPost(e) {
       case 'deleteEmployee':
         result = deleteEmployee(e.parameter.id);
         break;
+      case 'verifyAdminPassword': // New action
+        result = doVerifyAdminPassword(e.parameter);
+        break;
       default:
         throw new Error("Acción no reconocida: " + action);
     }
@@ -61,6 +64,31 @@ function doPost(e) {
       
   } catch (error) {
     return handleError(error);
+  }
+}
+
+// --- NUEVA FUNCIÓN DE AUTENTICACIÓN ---
+
+function doVerifyAdminPassword(params) {
+  try {
+    debugLog("--- doVerifyAdminPassword START ---");
+    const storedPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+    const suppliedPassword = params.password;
+
+    if (!storedPassword) {
+      debugLog("CRITICAL: ADMIN_PASSWORD property is not set in Script Properties.");
+      throw new Error("La contraseña de administrador no ha sido configurada en el servidor.");
+    }
+
+    const success = (storedPassword === suppliedPassword);
+    debugLog("Password verification result: " + (success ? "SUCCESS" : "FAILURE"));
+    debugLog("--- doVerifyAdminPassword END ---");
+    
+    return { success: success };
+
+  } catch (error) {
+    debugLog("CRITICAL ERROR in doVerifyAdminPassword: " + error.toString());
+    throw error;
   }
 }
 
