@@ -6,12 +6,14 @@ export interface Employee {
 }
 
 export interface TimeLog {
+  id: string;
   timestamp: string;
   employeeId: string;
   type: 'ENTRADA' | 'SALIDA';
   source: string;
   row: number;
   entryType?: 'Manual' | 'Automático';
+  isPending?: boolean;
 }
 
 export interface ApiResponse {
@@ -39,4 +41,5 @@ export interface OpenShift {
   employeeName: string;
   entryTimestamp: Date;
   liveDuration: string;
+  isPending?: boolean;
 }

@@ -1,180 +1,62 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import EmployeeClockIn from './EmployeeClockIn';
 import WeeklyDashboard from './WeeklyDashboard';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
-import { apiService } from '@/services/api';
 import { type Employee, type TimeLog } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { DateTimePicker } from './ui/DateTimePicker';
-import { subHours, differenceInMinutes, format } from 'date-fns';
+import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
-import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, FAST_CLOCK_IN_THRESHOLD_MINUTES } from '@/config/rules';
+import { MAX_SHIFT_HOURS } from '@/lib/validators'; // MAX_SHIFT_HOURS is still needed for the dialog message
+import { TOAST_MESSAGES, DIALOG_MESSAGES, BUTTON_LABELS, LOADING_MESSAGES } from '@/lib/messages';
+import { useClockingActions } from '@/hooks/useClockingActions';
+import { useManualClockIn } from '@/hooks/useManualClockIn';
 
 const AppLayout: React.FC = () => {
   const { isAdmin, logout } = useAuth();
-  const { employees, loading: loadingEmployees, reloadEmployees } = useEmployees();
-  const { shifts: logs, loading: loadingShifts, reloadShifts } = useShifts();
-  const [showManualClockIn, setShowManualClockIn] = useState(false);
-  const [employeeForManualClockIn, setEmployeeForManualClockIn] = useState<string | null>(null);
-  const [manualClockInTime, setManualClockInTime] = useState<Date | undefined>(undefined);
-  const [showClockInWarning, setShowClockInWarning] = useState(false);
-  const [pendingClockInData, setPendingClockInData] = useState<{ employeeId: string, type: 'ENTRADA' | 'SALIDA' } | null>(null);
-  const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
-  const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
-  const [showLongTurnWarning, setShowLongTurnWarning] = useState(false);
-  const [isActionLoading, setIsActionLoading] = useState(false);
-
-  const { toast } = useToast();
-
-  const overallLoading = loadingEmployees || loadingShifts || isActionLoading;
-
-  const proceedWithClockIn = async (employeeId: string) => {
-      await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
-      await reloadShifts();
-      
-      const employee = employees.find(e => e.id === employeeId);
-      toast({
-        title: "Éxito",
-        description: `ENTRADA registrada para ${employee?.name}`,
-      });
-  }
+  const { employees, loading: loadingEmployees } = useEmployees();
+  const { shifts: logsFromContext, loading: loadingShifts } = useShifts();
   
-  const handleClockInWarningConfirm = async () => {
-    if (pendingClockInData) {
-        setIsActionLoading(true);
-        try {
-            setShowClockInWarning(false);
-            await proceedWithClockIn(pendingClockInData.employeeId);
-        } catch (error) {
-             toast({
-                title: "Error",
-                description: "No se pudo registrar la acción",
-                variant: "destructive"
-            });
-        } finally {
-            setPendingClockInData(null);
-            setIsActionLoading(false);
-        }
-    }
-  }
+  const {
+    displayLogs, // Added this
+    handleClockAction,
+    handleCancelClockIn,
+    handleClockInWarningConfirm,
+    showClockInWarning,
+    setShowClockInWarning,
+    pendingClockInData,
+    lastClockOutTime,
+    showTurnCompletedWarning,
+    setShowTurnCompletedWarning,
+    showLongTurnWarning,
+    setShowLongTurnWarning,
+  } = useClockingActions({ initialLogs: logsFromContext, employees }); // Pass logsFromContext as initialLogs
 
-  const handleClockAction = async (employeeId: string, type: 'ENTRADA' | 'SALIDA') => {
-    setIsActionLoading(true);
-    try {
-      const employeeLogs = logs.filter(log => log.employeeId === employeeId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      const lastLog = employeeLogs[0];
-      
-      if (type === 'SALIDA') {
-        if (!lastLog) {
-            setEmployeeForManualClockIn(employeeId);
-            setManualClockInTime(subHours(new Date(), 8));
-            setShowManualClockIn(true);
-        } else if (lastLog.type === 'SALIDA') {
-            setShowTurnCompletedWarning(true);
-        } else {
-             if (differenceInMinutes(new Date(), new Date(lastLog.timestamp)) > MAX_SHIFT_MINUTES) {
-                 setShowLongTurnWarning(true);
-                 return;
-             }
-             
-             await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
-             await reloadShifts();
-             const employee = employees.find(e => e.id === employeeId);
-             toast({
-                title: "Éxito",
-                description: `SALIDA registrada para ${employee?.name}`,
-            });
-        }
-        return;
-      }
-      
-      if (type === 'ENTRADA' && lastLog && lastLog.type === 'ENTRADA') {
-        toast({
-          title: "Error", 
-          description: "Ya hay una entrada abierta para este empleado",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (type === 'ENTRADA' && lastLog && lastLog.type === 'SALIDA') {
-          const minutesSinceLastClockOut = differenceInMinutes(new Date(), new Date(lastLog.timestamp));
-          if (minutesSinceLastClockOut < FAST_CLOCK_IN_THRESHOLD_MINUTES) { 
-              setLastClockOutTime(format(new Date(lastLog.timestamp), 'p'));
-              setPendingClockInData({ employeeId, type });
-              setShowClockInWarning(true);
-              return;
-          }
-      }
-      
-      await apiService.addLog(employeeId, type, undefined, 'Automático');
-      await reloadShifts();
-      
-      const employee = employees.find(e => e.id === employeeId);
-      toast({
-        title: "Éxito",
-        description: `${type} registrada para ${employee?.name}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo registrar la acción",
-        variant: "destructive"
-      });
-    } finally {
-        setIsActionLoading(false);
-    }
-  };
+  const {
+    showManualClockIn,
+    setShowManualClockIn,
+    employeeForManualClockIn,
+    setEmployeeForManualClockIn,
+    manualClockInTime,
+    setManualClockInTime,
+    handleManualClockInSubmit,
+  } = useManualClockIn({ employees });
 
-  const handleManualClockInSubmit = async () => {
-    if (!employeeForManualClockIn || !manualClockInTime) {
-      toast({
-        title: "Error",
-        description: "Por favor, selecciona una fecha y hora de entrada",
-        variant: "destructive"
-      });
-      return;
-    }
+  // Removed useEffect and displayLogs state
 
-    setIsActionLoading(true);
-    try {
-      setShowManualClockIn(false);
-      
-      await apiService.addLog(employeeForManualClockIn, 'ENTRADA', manualClockInTime.toISOString(), 'Manual');
-      await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
-      
-      await reloadShifts();
-      await reloadEmployees();
-      const employee = employees.find(e => e.id === employeeForManualClockIn);
-      toast({
-        title: "Éxito",
-        description: `Entrada manual y salida registrada para ${employee?.name}`,
-      });
-    } catch (error) {
-        toast({
-            title: "Error",
-            description: "No se pudo registrar la entrada manual",
-            variant: "destructive"
-        });
-    } finally {
-        setEmployeeForManualClockIn(null);
-        setManualClockInTime(undefined);
-        setIsActionLoading(false);
-    }
-  };
+  const overallLoading = loadingEmployees || loadingShifts;
 
   if (overallLoading && employees.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-lg text-gray-600">Cargando...</p>
+          <p className="mt-4 text-lg text-gray-600">{LOADING_MESSAGES.LOADING}</p>
         </div>
       </div>
     );
@@ -182,17 +64,7 @@ const AppLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {overallLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg text-center shadow-lg">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2">Procesando...</p>
-          </div>
-        </div>
-      )}
-
       <AdminLogin />
-
       <div className="container mx-auto p-4 space-y-6">
         {isAdmin ? (
           <AdminPanel onBack={logout} />
@@ -203,68 +75,68 @@ const AppLayout: React.FC = () => {
               onClockAction={handleClockAction}
               loading={overallLoading}
             />
-            <WeeklyDashboard employees={employees} logs={logs} />
+            <WeeklyDashboard 
+              employees={employees} 
+              logs={logsFromContext} 
+              onCancelClockIn={handleCancelClockIn}
+            />
           </>
         )}
       </div>
-      
       <Dialog open={showManualClockIn} onOpenChange={setShowManualClockIn}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Entrada Manual Olvidada</DialogTitle>
+            <DialogTitle>{DIALOG_MESSAGES.MANUAL_CLOCK_IN_TITLE}</DialogTitle>
              <DialogDescription>
-                No se encontró una entrada abierta. Se ha pre-calculado una hora de entrada 8 horas antes de este momento. Ajústala si es necesario.
+                {DIALOG_MESSAGES.MANUAL_CLOCK_IN_DESCRIPTION}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <DateTimePicker date={manualClockInTime} setDate={setManualClockInTime} />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowManualClockIn(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setShowManualClockIn(false)}>{BUTTON_LABELS.CANCEL}</Button>
             <Button onClick={handleManualClockInSubmit}>Registrar Entrada y Salida</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
       <Dialog open={showClockInWarning} onOpenChange={setShowClockInWarning}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar Nueva Entrada</DialogTitle>
+            <DialogTitle>{DIALOG_MESSAGES.CONFIRM_NEW_ENTRY_TITLE}</DialogTitle>
              <DialogDescription>
-                Acabas de registrar una salida a las {lastClockOutTime}. ¿Estás seguro de que quieres iniciar un nuevo turno tan pronto?
+                {DIALOG_MESSAGES.CONFIRM_NEW_ENTRY_DESCRIPTION(lastClockOutTime)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClockInWarning(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setShowClockInWarning(false)}>{BUTTON_LABELS.CANCEL}</Button>
             <Button onClick={handleClockInWarningConfirm}>Sí, registrar entrada</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
       <AlertDialog open={showTurnCompletedWarning} onOpenChange={setShowTurnCompletedWarning}>
           <AlertDialogContent>
               <AlertDialogHeader>
-                  <AlertDialogTitle>Turno ya completado</AlertDialogTitle>
+                  <AlertDialogTitle>{DIALOG_MESSAGES.TURN_COMPLETED_TITLE}</AlertDialogTitle>
                   <AlertDialogDescription>
-                      Ya has registrado una salida para tu turno actual. No puedes registrar otra salida sin antes haber registrado una nueva entrada. Si crees que esto es un error, por favor, contacta al administrador.
+                      {DIALOG_MESSAGES.TURN_COMPLETED_DESCRIPTION}
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                  <AlertDialogAction onClick={() => setShowTurnCompletedWarning(false)}>Entendido</AlertDialogAction>
+                  <AlertDialogAction onClick={() => setShowTurnCompletedWarning(false)}>{BUTTON_LABELS.UNDERSTOOD}</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>
-      
       <AlertDialog open={showLongTurnWarning} onOpenChange={setShowLongTurnWarning}>
           <AlertDialogContent>
               <AlertDialogHeader>
-                  <AlertDialogTitle>Turno Excesivamente Largo</AlertDialogTitle>
+                  <AlertDialogTitle>{DIALOG_MESSAGES.LONG_TURN_TITLE}</AlertDialogTitle>
                   <AlertDialogDescription>
-                      El sistema ha detectado que tu turno abierto ha superado las {MAX_SHIFT_HOURS} horas. No se puede registrar la salida automáticamente. Por favor, contacta a un administrador para revisar y corregir tu registro.
+                      {DIALOG_MESSAGES.LONG_TURN_DESCRIPTION(MAX_SHIFT_HOURS)}
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                  <AlertDialogAction onClick={() => setShowLongTurnWarning(false)}>Entendido</AlertDialogAction>
+                  <AlertDialogAction onClick={() => setShowLongTurnWarning(false)}>{BUTTON_LABELS.UNDERSTOOD}</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>

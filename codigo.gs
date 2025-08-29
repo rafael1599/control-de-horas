@@ -22,36 +22,20 @@ function doPost(e) {
     debugLog("doPost received event: " + JSON.stringify(e));
     const action = e.parameter.action;
     debugLog("Action received: " + action);
-    debugLog("e.parameter content: " + JSON.stringify(e.parameter));
 
     let result = {};
 
     switch(action) {
-      case 'addLog':
-        result = addLog(e.parameter);
+      case 'addRow':
+        result = addRow(e.parameter);
         break;
-      case 'updateLog':
-        result = updateLog(e.parameter);
+      case 'updateCell':
+        result = updateCell(e.parameter);
         break;
-      case 'updateShift':
-        result = updateShift(e.parameter);
+      case 'deleteRow':
+        result = deleteRow(e.parameter);
         break;
-      case 'deleteLog':
-        result = deleteLog(e.parameter.row);
-        break;
-      case 'deleteShift':
-        result = deleteShift(e.parameter);
-        break;
-      case 'addEmployee':
-        result = addEmployee(e.parameter);
-        break;
-      case 'updateEmployee':
-        result = updateEmployee(e.parameter);
-        break;
-      case 'deleteEmployee':
-        result = deleteEmployee(e.parameter.id);
-        break;
-      case 'verifyAdminPassword': // New action
+      case 'verifyAdminPassword': // Kept for authentication
         result = doVerifyAdminPassword(e.parameter);
         break;
       default:
@@ -59,7 +43,7 @@ function doPost(e) {
     }
     
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'success', data: result }))
+      .createTextOutput(JSON.stringify({ success: true, data: result }))
       .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
@@ -93,57 +77,103 @@ function doVerifyAdminPassword(params) {
 }
 
 
+// --- FUNCIONES PARA MANEJAR EMPLEADOS (Lectura) ---
+
+function getEmployees() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EMPLOYEE_SHEET_NAME);
+  if (!sheet) {
+    // This will create the sheet and then the client can refetch.
+    createInitialEmployeeSheet();
+    return []; 
+  }
+  const data = sheet.getDataRange().getValues();
+  data.shift(); // Remove header row
+  return data;
+}
+
+
+// --- NUEVAS FUNCIONES DE MANIPULACIÓN DE DATOS ---
+
+function addRow(params) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(params.sheetName);
+  // The rowData parameter should be a JSON stringified array of values
+  const rowData = JSON.parse(params.rowData);
+  sheet.appendRow(rowData);
+  const newRow = sheet.getLastRow();
+  return { newRow: newRow, writtenData: rowData };
+}
+
+function updateCell(params) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(params.sheetName);
+  const row = parseInt(params.row);
+  const col = parseInt(params.col);
+  sheet.getRange(row, col).setValue(params.value);
+  return { updatedCell: `${params.sheetName}!R${row}C${col}` };
+}
+
+function deleteRow(params) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(params.sheetName);
+  const row = parseInt(params.row);
+  sheet.deleteRow(row);
+  return { deletedRow: row, sheetName: params.sheetName };
+}
+
+
+// --- FUNCIONES PARA MANEJAR REGISTROS DE HORAS (Lectura) ---
+
+function getLogs() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getValues();
+  data.shift(); // Quitar cabecera
+  return data;
+}
+
+// --- NUEVA FUNCIÓN DE AUTENTICACIÓN ---
+
+function doVerifyAdminPassword(params) {
+  try {
+    debugLog("--- doVerifyAdminPassword START ---");
+    const storedPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+    const suppliedPassword = params.password;
+
+    if (!storedPassword) {
+      debugLog("CRITICAL: ADMIN_PASSWORD property is not set in Script Properties.");
+      throw new Error("La contraseña de administrador no ha sido configurada en el servidor.");
+    }
+
+    const success = (storedPassword === suppliedPassword);
+    debugLog("Password verification result: " + (success ? "SUCCESS" : "FAILURE"));
+    debugLog("--- doVerifyAdminPassword END ---");
+    
+    return { success: success };
+
+  } catch (error) {
+    debugLog("CRITICAL ERROR in doVerifyAdminPassword: " + error.toString());
+    throw error;
+  }
+}
+
+
 // --- FUNCIONES PARA MANEJAR EMPLEADOS ---
 
 function getEmployees() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EMPLOYEE_SHEET_NAME);
   if (!sheet) {
-    return createInitialEmployeeSheet();
+    // This will create the sheet and then the client can refetch.
+    createInitialEmployeeSheet();
+    return []; 
   }
   const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  
-  return data.map(row => {
-    let employee = {};
-    headers.forEach((header, i) => {
-      employee[header] = row[i];
-    });
-    return employee;
-  });
+  data.shift(); // Remove header row
+  return data;
 }
 
-function addEmployee(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EMPLOYEE_SHEET_NAME);
-  sheet.appendRow([`'${data.id}`, data.name, data.rate]);
-  return { id: data.id, name: data.name };
-}
 
-function updateEmployee(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EMPLOYEE_SHEET_NAME);
-  const dataRange = sheet.getDataRange();
-  const values = dataRange.getValues();
-  
-  for (let i = 1; i < values.length; i++) {
-    if (values[i][0].toString() == data.id.toString()) {
-      sheet.getRange(i + 1, 1).setValue(`'${data.id}`);
-      sheet.getRange(i + 1, 2).setValue(data.name);
-      sheet.getRange(i + 1, 3).setValue(data.rate);
-      return { id: data.id };
-    }
-  }
-  throw new Error("No se encontró el empleado con ID: " + data.id);
-}
 
-function deleteEmployee(id) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EMPLOYEE_SHEET_NAME);
-  const data = sheet.getDataRange().getValues();
-  for (let i = data.length - 1; i > 0; i--) {
-    if (data[i][0].toString() == id.toString()) {
-      sheet.deleteRow(i + 1);
-      return { id };
-    }
-  }
-}
+
+
+
 
 
 // --- FUNCIONES PARA MANEJAR REGISTROS DE HORAS ---
@@ -153,105 +183,18 @@ function getLogs() {
   if (!sheet) return [];
   const data = sheet.getDataRange().getValues();
   data.shift(); // Quitar cabecera
-  
-  return data.map((row, index) => ({
-    timestamp: new Date(row[0]).toISOString(),
-    employeeId: row[1].toString(),
-    type: row[3],
-    source: row[4],
-    row: index + 2
-  }));
+  return data;
 }
 
-function addLog(data) {
-  try {
-    debugLog("--- addLog START ---");
-    debugLog("Received data: " + JSON.stringify(data));
 
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
-    if (!sheet) {
-      debugLog("Error: Log sheet not found!");
-      throw new Error("La hoja de 'Registros' no fue encontrada.");
-    }
 
-    const employees = getEmployees();
-    const employee = employees.find(e => e.id.toString() == data.employeeId.toString());
-    const employeeName = employee ? employee.name : "Desconocido";
-    debugLog("Found employee: " + employeeName);
-    
-    const timestamp = data.timestamp ? new Date(data.timestamp) : new Date();
-    const source = data.source || data.entryType || 'Automático';
 
-    const rowData = [
-      timestamp,
-      `'${data.employeeId}`,
-      employeeName,
-      data.type,
-      source
-    ];
 
-    debugLog("Data to be appended: " + JSON.stringify(rowData));
-    sheet.appendRow(rowData);
-    debugLog("Row appended. --- addLog END ---");
 
-    return { written: timestamp.toISOString() };
 
-  } catch (error) {
-    debugLog("CRITICAL ERROR in addLog: " + error.toString());
-    throw error;
-  }
-}
 
-function updateLog(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
-  const row = parseInt(data.row);
-  sheet.getRange(row, 1).setValue(new Date(data.timestamp));
-  return { row };
-}
 
-function updateShift(data) {
-  debugLog("--- updateShift START ---");
-  debugLog("Received data: " + JSON.stringify(data));
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
-  const entryRow = parseInt(data.entryRow);
-  const exitRow = parseInt(data.exitRow);
 
-  // Actualizar la fila de ENTRADA
-  sheet.getRange(entryRow, 1).setValue(new Date(data.entryTimestamp));
-  sheet.getRange(entryRow, 5).setValue('Manual Edit'); // Columna E (Source)
-
-  // Actualizar la fila de SALIDA
-  sheet.getRange(exitRow, 1).setValue(new Date(data.exitTimestamp));
-  sheet.getRange(exitRow, 5).setValue('Manual Edit'); // Columna E (Source)
-
-  debugLog("--- updateShift END ---");
-  return { updatedRows: [entryRow, exitRow] };
-}
-
-function deleteLog(row) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
-  sheet.deleteRow(parseInt(row));
-  return { row };
-}
-
-function deleteShift(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(LOG_SHEET_NAME);
-  const entryRow = parseInt(data.entryRow);
-  const exitRow = parseInt(data.exitRow);
-
-  debugLog(`--- deleteShift START --- Deleting rows: ${entryRow} and ${exitRow}`);
-
-  if (entryRow > exitRow) {
-    sheet.deleteRow(entryRow);
-    sheet.deleteRow(exitRow);
-  } else {
-    sheet.deleteRow(exitRow);
-    sheet.deleteRow(entryRow);
-  }
-
-  debugLog("--- deleteShift END ---");
-  return { deletedRows: [entryRow, exitRow] };
-}
 
 
 // --- FUNCIONES AUXILIARES ---
@@ -279,7 +222,7 @@ function createInitialEmployeeSheet() {
 function handleError(error) {
   debugLog("handleError triggered: " + error.toString());
   return ContentService
-    .createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+    .createTextOutput(JSON.stringify({ success: false, message: error.message }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

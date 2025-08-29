@@ -3,22 +3,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/hooks/use-toast';
-import { isAfter, differenceInMinutes } from 'date-fns';
+import { apiService } from '@/services/api';
 import { type ProcessedShift } from '@/types';
-import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
-import { Loader2 } from 'lucide-react';
+import { LOG_SHEET_NAME } from '@/config/sheets';
+import { validateEditShift } from '@/lib/validators'; // NEW IMPORT
+// Removed: differenceInMinutes, MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, areAllFieldsFilled, isNotInFuture, isShiftDurationValid
 
 interface EditShiftDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpdate: (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => Promise<void>;
   shift: ProcessedShift;
 }
 
-const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, onUpdate, shift }) => {
+const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, shift }) => {
   const [entryTime, setEntryTime] = useState<Date | undefined>();
   const [exitTime, setExitTime] = useState<Date | undefined>();
-  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -29,39 +28,28 @@ const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, onUp
   }, [shift]);
 
   const handleSubmit = async () => {
-    if (!entryTime || !exitTime || !shift.exitRow) {
-      toast({ title: "Error", description: "Datos del turno inválidos.", variant: "destructive" });
+    // Centralized Frontend Validations
+    const validation = validateEditShift(entryTime, exitTime, shift);
+    if (!validation.isValid) {
+      toast({ title: "Error", description: validation.message, variant: "destructive" });
       return;
     }
 
-    if (!isAfter(exitTime, entryTime)) {
-      toast({ title: "Error de Validación", description: "La hora de salida debe ser posterior a la hora de entrada.", variant: "destructive" });
-      return;
-    }
-
-    if (differenceInMinutes(exitTime, entryTime) > MAX_SHIFT_MINUTES) {
-      toast({ title: "Error de Validación", description: `La duración del turno no puede exceder las ${MAX_SHIFT_HOURS} horas.`, variant: "destructive" });
-      return;
-    }
-
-    if (isAfter(exitTime, new Date())) {
-      toast({ title: "Error de Validación", description: "No se pueden registrar horas en el futuro.", variant: "destructive" });
-      return;
-    }
-
-    setIsUpdating(true);
     try {
-      await onUpdate(
-        shift.entryRow,
-        shift.exitRow,
-        entryTime.toISOString(),
-        exitTime.toISOString()
-      );
+      // Update entry timestamp
+      await apiService.updateCell(LOG_SHEET_NAME, shift.entryRow, 1, entryTime!.toISOString());
+      // Update exit timestamp
+      await apiService.updateCell(LOG_SHEET_NAME, shift.exitRow!, 1, exitTime!.toISOString()); // Use shift.exitRow! as it's validated to exist
+
+      toast({ title: "Éxito", description: "Turno actualizado correctamente." });
       onClose();
+      // We need to trigger a reload of shifts in the parent component (ShiftsTable -> AdminPanel -> ShiftsContext)
+      // This is handled by the onCorrectionComplete prop in ShiftsTable, which is passed from AdminPanel.
+      // We need to call reloadShifts from ShiftsContext.
+      // For now, we'll rely on the parent to reload.
     } catch (error) {
+      console.error("Error updating shift:", error);
       toast({ title: "Error", description: "No se pudo actualizar el turno.", variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -75,29 +63,21 @@ const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, onUp
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-          {isUpdating ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="ml-4 text-muted-foreground">Actualizando turno...</p>
+          <>
+            <div className="flex flex-col gap-2">
+              <label className="font-medium">Fecha y Hora de Entrada</label>
+              <DateTimePicker date={entryTime} setDate={setEntryTime} />
             </div>
-          ) : (
-            <>
-              <div className="flex flex-col gap-2">
-                <label className="font-medium">Fecha y Hora de Entrada</label>
-                <DateTimePicker date={entryTime} setDate={setEntryTime} />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="font-medium">Fecha y Hora de Salida</label>
-                <DateTimePicker date={exitTime} setDate={setExitTime} minDate={entryTime} />
-              </div>
-            </>
-          )}
+            <div className="flex flex-col gap-2">
+              <label className="font-medium">Fecha y Hora de Salida</label>
+              <DateTimePicker date={exitTime} setDate={setExitTime} minDate={entryTime} />
+            </div>
+          </>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isUpdating}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isUpdating}>
-            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} 
-            {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={handleSubmit}>
+            Guardar Cambios
           </Button>
         </DialogFooter>
       </DialogContent>

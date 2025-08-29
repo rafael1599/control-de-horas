@@ -2,9 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { startOfWeek, endOfWeek, addWeeks, format, set, differenceInSeconds } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { type Employee, type TimeLog, type OpenShift } from '@/types';
-import { useEmployees } from '@/contexts/EmployeesContext';
-import { useShifts } from '@/contexts/ShiftsContext';
-
 
 // Helper to get the start of our specific week (Monday 7 AM)
 const getCustomWeekStart = (date: Date): Date => {
@@ -21,10 +18,7 @@ const formatDuration = (totalSeconds: number): string => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export const useWeeklyDashboard = () => {
-  const { employees } = useEmployees();
-  const { shifts: logs } = useShifts();
-
+export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
   const [weekOffset, setWeekOffset] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -61,7 +55,7 @@ export const useWeeklyDashboard = () => {
 
     const employeeMap = new Map(employees.map(e => [e.id, e]));
     const employeeHours: Record<string, { hours: number; employee: Employee }> = {};
-    const currentOpenShifts = new Map<string, Date>();
+    const currentOpenShifts = new Map<string, { entryTime: Date, isPending: boolean }>();
 
     const sortedLogs = filteredLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
@@ -70,12 +64,12 @@ export const useWeeklyDashboard = () => {
       if (!employee) return;
 
       if (log.type === 'ENTRADA') {
-        currentOpenShifts.set(log.employeeId, new Date(log.timestamp));
+        currentOpenShifts.set(log.employeeId, { entryTime: new Date(log.timestamp), isPending: !!log.isPending });
       } else if (log.type === 'SALIDA') {
         if (currentOpenShifts.has(log.employeeId)) {
-          const entryTime = currentOpenShifts.get(log.employeeId)!;
+          const entryData = currentOpenShifts.get(log.employeeId)!;
           const exitTime = new Date(log.timestamp);
-          const hours = (exitTime.getTime() - entryTime.getTime()) / (1000 * 60 * 60);
+          const hours = (exitTime.getTime() - entryData.entryTime.getTime()) / (1000 * 60 * 60);
           
           if (!employeeHours[log.employeeId]) {
             employeeHours[log.employeeId] = { hours: 0, employee };
@@ -87,15 +81,16 @@ export const useWeeklyDashboard = () => {
     });
 
     const openShiftsData: OpenShift[] = [];
-    currentOpenShifts.forEach((entryTimestamp, employeeId) => {
+    currentOpenShifts.forEach(({ entryTime, isPending }, employeeId) => {
       const employee = employeeMap.get(employeeId);
       if (employee) {
-        const totalSeconds = differenceInSeconds(currentTime, entryTimestamp);
+        const totalSeconds = differenceInSeconds(currentTime, entryTime);
         openShiftsData.push({
           employeeId,
           employeeName: employee.name,
-          entryTimestamp,
+          entryTimestamp: entryTime,
           liveDuration: formatDuration(totalSeconds),
+          isPending: isPending,
         });
       }
     });

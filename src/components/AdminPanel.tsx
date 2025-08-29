@@ -25,6 +25,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     shifts,
     loading: loadingShifts,
     updateShift,
+    deleteLog,
     reloadShifts,
   } = useShifts();
 
@@ -70,6 +71,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             logs={shifts} 
             employees={employees} 
             onUpdateShift={updateShift}
+            onDeleteLog={deleteLog}
             onCorrectionComplete={reloadShifts}
           />
         </TabsContent>

@@ -4,9 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-import { isAfter } from 'date-fns';
 import { apiService } from '@/services/api';
 import { type Employee } from '@/types';
+import { validateAddShift } from '@/lib/validators'; // NEW IMPORT
+import { LOG_SHEET_NAME } from '@/config/sheets'; // NEW IMPORT
+// Removed: differenceInMinutes, MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, areAllFieldsFilled, isNotInFuture, isShiftDurationValid
 
 interface AddShiftDialogProps {
   isOpen: boolean;
@@ -23,32 +25,49 @@ const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, onShif
   const { toast } = useToast();
 
   const handleSubmit = async () => {
-    if (!employeeId || !entryTime || !exitTime) {
-      toast({ title: "Error", description: "Por favor, completa todos los campos.", variant: "destructive" });
-      return;
-    }
-
-    if (isAfter(entryTime, new Date()) || isAfter(exitTime, new Date())) {
-      toast({ title: "Error de Validación", description: "No se pueden registrar horas en el futuro.", variant: "destructive" });
-      return;
-    }
-
-    if (!isAfter(exitTime, entryTime)) {
-      toast({ title: "Error de Validación", description: "La hora de salida debe ser posterior a la hora de entrada.", variant: "destructive" });
+    // Centralized Frontend Validations
+    const validation = validateAddShift(employeeId, entryTime, exitTime);
+    if (!validation.isValid) {
+      toast({ title: "Error", description: validation.message, variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
+      const selectedEmployee = employees.find(emp => emp.id === employeeId);
+      if (!selectedEmployee) {
+        toast({ title: "Error", description: "Empleado no encontrado.", variant: "destructive" });
+        return;
+      }
+
+      // Construct rowData for ENTRADA
+      const entryRowData = [
+        entryTime!.toISOString(),
+        `'${employeeId}`,
+        selectedEmployee.name,
+        'ENTRADA',
+        'Manual'
+      ];
+
+      // Construct rowData for SALIDA
+      const exitRowData = [
+        exitTime!.toISOString(),
+        `'${employeeId}`,
+        selectedEmployee.name,
+        'SALIDA',
+        'Manual'
+      ];
+
       // Add entry log
-      await apiService.addLog(employeeId, 'ENTRADA', entryTime.toISOString(), 'Manual');
+      await apiService.addRow(LOG_SHEET_NAME, entryRowData);
       // Add exit log
-      await apiService.addLog(employeeId, 'SALIDA', exitTime.toISOString(), 'Manual');
+      await apiService.addRow(LOG_SHEET_NAME, exitRowData);
 
       toast({ title: "Éxito", description: "El nuevo turno ha sido agregado correctamente." });
-      onShiftAdded();
+      onShiftAdded(); // This will trigger reloadShifts in AdminPanel
       onClose();
     } catch (error) {
+      console.error("Error adding shift:", error);
       toast({ title: "Error", description: "No se pudo agregar el turno.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -88,7 +107,9 @@ const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, onShif
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Cancelar
+          </Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Guardando...' : 'Guardar Turno'}
           </Button>

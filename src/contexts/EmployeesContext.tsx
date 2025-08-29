@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { apiService } from '@/services/api';
 import { type Employee } from '@/types';
+import { processRawEmployees } from '../lib/processors';
 import { toast } from 'sonner';
 
 interface EmployeesContextType {
@@ -32,8 +33,9 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       setLoading(true);
       console.log('EmployeesContext: Setting loading to true');
-      const { employees } = await apiService.fetchData();
-      setEmployees(employees);
+      const { employees: rawEmployees } = await apiService.fetchData();
+      const processedEmployees = processRawEmployees(rawEmployees);
+      setEmployees(processedEmployees);
       setError(null);
     } catch (err) {
       setError('Failed to fetch employees');

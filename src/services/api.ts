@@ -1,151 +1,66 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbyBaZcWlF-s8HB0pjfU9FEA-2N7L54_3yIJjpnDDbwjr1PuC9iCdlWX8AsBYfjARCVYaw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw-4DzC6HrU1iw4cB9EZAhs5WFlkWIkXnhPIL9jy_3hwfGImfwOCliPQnqw4KQjvd7Whw/exec';
 
 import { Employee, TimeLog, ApiResponse } from '@/types';
 
 export const apiService = {
-  async fetchData(): Promise<ApiResponse> {
+  async fetchData(): Promise<{ employees: any[][], logs: any[][] }> {
     console.log('Attempting to fetch data from API_URL:', API_URL);
     const response = await fetch(API_URL);
     if (!response.ok) {
       throw new Error('Failed to fetch data');
     }
+    // The backend now returns raw arrays, just pass them through
     return response.json();
   },
 
-  async addLog(employeeId: string, type: 'ENTRADA' | 'SALIDA', timestamp?: string, source: 'Manual' | 'Automático' = 'Automático'): Promise<void> {
+  async addRow(sheetName: string, rowData: any[]): Promise<{ newRow: number, writtenData: any[] }> {
     const formData = new FormData();
-    formData.append('action', 'addLog');
-    formData.append('employeeId', employeeId);
-    formData.append('type', type);
-    if (timestamp) {
-      formData.append('timestamp', timestamp);
-    }
-    formData.append('source', source);
+    formData.append('action', 'addRow');
+    formData.append('sheetName', sheetName);
+    formData.append('rowData', JSON.stringify(rowData)); // Send as JSON string
 
     const response = await fetch(API_URL, {
       method: 'POST',
       body: formData
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to add log');
-    }
+    if (!response.ok) throw new Error('Failed to add row');
+    const result = await response.json();
+    if (!result.success || !result.data) throw new Error(result.message || 'Invalid response');
+    return result.data;
   },
 
-  async addEmployee(employee: Employee): Promise<void> {
+  async updateCell(sheetName: string, row: number, col: number, value: any): Promise<{ updatedCell: string }> {
     const formData = new FormData();
-    formData.append('action', 'addEmployee');
-    formData.append('id', employee.id);
-    formData.append('name', employee.name);
-    formData.append('rate', employee.rate.toString());
+    formData.append('action', 'updateCell');
+    formData.append('sheetName', sheetName);
+    formData.append('row', row.toString());
+    formData.append('col', col.toString());
+    formData.append('value', value.toString());
 
     const response = await fetch(API_URL, {
       method: 'POST',
       body: formData
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to add employee');
-    }
+    if (!response.ok) throw new Error('Failed to update cell');
+    const result = await response.json();
+    if (!result.success || !result.data) throw new Error(result.message || 'Invalid response');
+    return result.data;
   },
 
-  async updateEmployee(employee: Employee): Promise<void> {
+  async deleteRow(sheetName: string, row: number): Promise<{ deletedRow: number }> {
     const formData = new FormData();
-    formData.append('action', 'updateEmployee');
-    formData.append('id', employee.id);
-    formData.append('name', employee.name);
-    formData.append('rate', employee.rate.toString());
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update employee');
-    }
-  },
-
-  async deleteEmployee(id: string): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'deleteEmployee');
-    formData.append('id', id);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete employee');
-    }
-  },
-
-  async updateLog(log: Partial<TimeLog> & { row: number }): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'updateLog');
-    formData.append('row', log.row.toString());
-    if (log.timestamp) formData.append('timestamp', log.timestamp);
-    if (log.type) formData.append('type', log.type);
-    if (log.entryType) formData.append('entryType', log.entryType);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update log');
-    }
-  },
-
-  async deleteLog(row: number): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'deleteLog');
+    formData.append('action', 'deleteRow');
+    formData.append('sheetName', sheetName);
     formData.append('row', row.toString());
 
     const response = await fetch(API_URL, {
       method: 'POST',
       body: formData
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete log');
-    }
-  },
-
-  async deleteShift(entryRow: number, exitRow: number): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'deleteShift');
-    formData.append('entryRow', entryRow.toString());
-    formData.append('exitRow', exitRow.toString());
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete shift');
-    }
-  },
-
-  async updateShift(entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'updateShift');
-    formData.append('entryRow', entryRow.toString());
-    formData.append('exitRow', exitRow.toString());
-    formData.append('entryTimestamp', entryTimestamp);
-    formData.append('exitTimestamp', exitTimestamp);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update shift');
-    }
+    if (!response.ok) throw new Error('Failed to delete row');
+    const result = await response.json();
+    if (!result.success || !result.data) throw new Error(result.message || 'Invalid response');
+    return result.data;
   },
 
   async verifyPassword(password: string): Promise<{ success: boolean }> {

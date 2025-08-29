@@ -5,7 +5,7 @@ import { Trash2, Edit, Plus } from 'lucide-react';
 import { apiService } from '@/services/api';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { differenceInHours, differenceInMinutes, format } from 'date-fns';
-import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
+import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/lib/validators';
 import ManualExitDialog from './ManualExitDialog';
 import AddShiftDialog from './AddShiftDialog';
 import EditShiftDialog from './EditShiftDialog';
@@ -13,11 +13,11 @@ import EditShiftDialog from './EditShiftDialog';
 interface ShiftsTableProps {
   logs: TimeLog[];
   employees: Employee[];
-  onUpdateShift: (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => Promise<void>;
+  onDeleteLog: (row: number) => Promise<void>;
   onCorrectionComplete: () => void; // To reload data
 }
 
-const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete }) => {
+const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onDeleteLog, onCorrectionComplete }) => {
   const [isCorrectionDialogOpen, setIsCorrectionDialogOpen] = useState(false);
   const [isAddShiftDialogOpen, setIsAddShiftDialogOpen] = useState(false);
   const [isEditShiftDialogOpen, setIsEditShiftDialogOpen] = useState(false);
@@ -94,18 +94,15 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
   };
 
   const handleDeleteShift = async (shift: ProcessedShift) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible.')) return;
+    if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible y borrará tanto la entrada como la salida.')) return;
 
-    try {
-        if (shift.exitRow && shift.entryRow) {
-            await apiService.deleteShift(shift.entryRow, shift.exitRow);
-        } else {
-            await apiService.deleteLog(shift.entryRow);
-        }
-        onCorrectionComplete(); // Reload data
-    } catch (error) {
-        console.error("Failed to delete shift", error);
-        // Here you might want to show a toast to the user
+    // We call onDeleteLog for both rows. The optimistic context will handle the UI update.
+    // The API call will happen in the background.
+    if (shift.entryRow) {
+      await onDeleteLog(shift.entryRow);
+    }
+    if (shift.exitRow) {
+      await onDeleteLog(shift.exitRow);
     }
   }
 
@@ -195,7 +192,6 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
           <EditShiftDialog 
             isOpen={isEditShiftDialogOpen} 
             onClose={handleCloseDialogs} 
-            onUpdate={onUpdateShift}
             shift={selectedShift}
           />
       )}

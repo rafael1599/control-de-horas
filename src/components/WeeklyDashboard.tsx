@@ -3,14 +3,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { useWeeklyDashboard } from '@/hooks/useWeeklyDashboard';
-import { type Employee, type TimeLog } from '@/services/api';
+import { type Employee, type TimeLog } from '@/types';
 
 interface WeeklyDashboardProps {
   employees: Employee[];
   logs: TimeLog[];
+  onCancelClockIn: () => void;
 }
 
-const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) => {
+const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs, onCancelClockIn }) => {
   const {
     weeklyData,
     openShifts,
@@ -26,16 +27,38 @@ const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) =>
       {openShifts.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-xl font-semibold text-slate-800">Turnos Activos</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {openShifts.map(shift => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {openShifts.map(shift => {
+              return (
               <div key={shift.employeeId} className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
-                <p className="font-semibold text-blue-900">{shift.employeeName}</p>
-                <div className="flex items-center gap-2 text-blue-700 mt-1">
-                  <Clock className="h-4 w-4" />
-                  <p className="font-mono text-lg">{shift.liveDuration}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-semibold text-blue-900">{shift.employeeName}</p>
+                    <div className="flex items-center gap-2 text-blue-700 mt-1">
+                      <Clock className="h-4 w-4" />
+                      {shift.isPending ? (
+                        <p className="font-mono text-lg">Pendiente...</p> // Show pending message
+                      ) : (
+                        <p className="font-mono text-lg">{shift.liveDuration}</p> // Show live duration
+                      )}
+                    </div>
+                  </div>
+                  {shift.isPending && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-blue-600 hover:bg-blue-100 h-auto px-2 py-1"
+                      onClick={onCancelClockIn}
+                    >
+                      Deshacer entrada
+                    </Button>
+                  )}
                 </div>
+                {shift.isPending && (
+                  <p className="text-xs text-gray-500 mt-2">(Tienes 3 minutos para deshacer)</p>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         </div>
       )}
@@ -55,8 +78,8 @@ const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) =>
           </div>
         </div>
         
-        {weeklyData.length === 0 ? (
-          <p className="text-gray-500">No hay registros cerrados para esta semana.</p>
+        {weeklyData.length === 0 && openShifts.length === 0 ? (
+          <p className="text-gray-500">No hay registros para esta semana.</p>
         ) : (
           <Table>
             <TableHeader>
