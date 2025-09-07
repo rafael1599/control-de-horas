@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========= ENUMS =========
+enum Role {
+  COMPANY_ADMIN
+  EMPLOYEE
+}
+
+// ========= MODELOS PRINCIPALES =========
+
+model Company {
+  id           String @id @default(uuid())
+  company_name String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users       User[]
+  employees   Employee[]
+  locations   Location[]
+  clients     Client[]
+  projects    Project[]
+  timeEntries TimeEntry[]
+}
+
+model User {
+  id            String @id @default(uuid())
+  email         String @unique
+  password_hash String @db.VarChar(255)
+  role          Role
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  companyId String
+
+  employee Employee?
+
+  @@index([companyId])
+}
+
+model Employee {
+  id            String @id @default(uuid())
+  employee_code String?
+  full_name     String
+  hourly_rate   Float?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  companyId String
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+
+  assignments EmployeeAssignment[]
+  timeEntries TimeEntry[]
+
+  @@unique([companyId, employee_code])
+  @@index([companyId])
+}
+
+model TimeEntry {
+  id         String @id @default(uuid())
+  start_time DateTime
+  end_time   DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  companyId String
+
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employeeId String
+
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  projectId  String?
+
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  locationId String?
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([projectId])
+}
+
+// ========= MODELOS OPCIONALES =========
+
+model Location {
+  id            String @id @default(uuid())
+  location_name String
+  latitude      Float?
+  longitude     Float?
+  radius_meters Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  companyId String
+
+  assignments EmployeeAssignment[]
+  timeEntries TimeEntry[]
+
+  @@unique([location_name, companyId])
+  @@index([companyId])
+}
+
+model Client {
+  id          String @id @default(uuid())
+  client_name String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  companyId String
+  
+  projects Project[]
+
+  @@unique([client_name, companyId])
+  @@index([companyId])
+}
+
+model Project {
+  id           String @id @default(uuid())
+  project_name String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  companyId String
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  clientId String
+  
+  assignments EmployeeAssignment[]
+  timeEntries TimeEntry[]
+
+  @@unique([project_name, companyId])
+  @@index([companyId])
+  @@index([clientId])
+}
+
+model EmployeeAssignment {
+  id          String @id @default(uuid())
+  start_date  DateTime?
+  end_date    DateTime?
+
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  employeeId  String
+
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  projectId   String?
+
+  location    Location? @relation(fields: [locationId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  locationId  String?
+
+  @@index([employeeId])
+}

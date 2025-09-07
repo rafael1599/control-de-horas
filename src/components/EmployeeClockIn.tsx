@@ -60,7 +60,7 @@ const EmployeeClockIn: React.FC<EmployeeClockInProps> = ({
           <SelectContent>
             {employees.map((employee) => (
               <SelectItem key={employee.id} value={employee.id}>
-                {employee.name}
+                {employee.full_name}
               </SelectItem>
             ))}
           </SelectContent>

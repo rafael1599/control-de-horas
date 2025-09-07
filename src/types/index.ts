@@ -1,8 +1,21 @@
-
 export interface Employee {
   id: string;
-  name: string;
-  rate: number;
+  employee_code: string | null;
+  full_name: string;
+  hourly_rate: number | null;
+  createdAt: string;
+  updatedAt: string;
+  companyId: string;
+  userId: string;
+}
+
+// Nuevo tipo para la creación de empleados desde el formulario
+export interface EmployeeCreationData {
+  employee_code?: string;
+  fullName: string;
+  email: string;
+  password: string;
+  hourlyRate?: number;
 }
 
 export interface TimeLog {

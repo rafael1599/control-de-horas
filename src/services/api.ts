@@ -1,168 +1,97 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbyBaZcWlF-s8HB0pjfU9FEA-2N7L54_3yIJjpnDDbwjr1PuC9iCdlWX8AsBYfjARCVYaw/exec';
+import { Employee, EmployeeCreationData } from '@/types'; // Asumimos que Employee se importa desde types
 
-import { Employee, TimeLog, ApiResponse } from '@/types';
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
 
-export const apiService = {
-  async fetchData(): Promise<ApiResponse> {
-    console.log('Attempting to fetch data from API_URL:', API_URL);
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error('Failed to fetch data');
-    }
-    return response.json();
-  },
-
-  async addLog(employeeId: string, type: 'ENTRADA' | 'SALIDA', timestamp?: string, source: 'Manual' | 'Automático' = 'Automático'): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'addLog');
-    formData.append('employeeId', employeeId);
-    formData.append('type', type);
-    if (timestamp) {
-      formData.append('timestamp', timestamp);
-    }
-    formData.append('source', source);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add log');
-    }
-  },
-
-  async addEmployee(employee: Employee): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'addEmployee');
-    formData.append('id', employee.id);
-    formData.append('name', employee.name);
-    formData.append('rate', employee.rate.toString());
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add employee');
-    }
-  },
-
-  async updateEmployee(employee: Employee): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'updateEmployee');
-    formData.append('id', employee.id);
-    formData.append('name', employee.name);
-    formData.append('rate', employee.rate.toString());
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update employee');
-    }
-  },
-
-  async deleteEmployee(id: string): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'deleteEmployee');
-    formData.append('id', id);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete employee');
-    }
-  },
-
-  async updateLog(log: Partial<TimeLog> & { row: number }): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'updateLog');
-    formData.append('row', log.row.toString());
-    if (log.timestamp) formData.append('timestamp', log.timestamp);
-    if (log.type) formData.append('type', log.type);
-    if (log.entryType) formData.append('entryType', log.entryType);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update log');
-    }
-  },
-
-  async deleteLog(row: number): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'deleteLog');
-    formData.append('row', row.toString());
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete log');
-    }
-  },
-
-  async deleteShift(entryRow: number, exitRow: number): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'deleteShift');
-    formData.append('entryRow', entryRow.toString());
-    formData.append('exitRow', exitRow.toString());
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to delete shift');
-    }
-  },
-
-  async updateShift(entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string): Promise<void> {
-    const formData = new FormData();
-    formData.append('action', 'updateShift');
-    formData.append('entryRow', entryRow.toString());
-    formData.append('exitRow', exitRow.toString());
-    formData.append('entryTimestamp', entryTimestamp);
-    formData.append('exitTimestamp', exitTimestamp);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update shift');
-    }
-  },
-
-  async verifyPassword(password: string): Promise<{ success: boolean }> {
-    const formData = new FormData();
-    formData.append('action', 'verifyAdminPassword');
-    formData.append('password', password);
-
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Password verification request failed');
-    }
-
-    const result = await response.json();
-    return result.data;
+/**
+ * Obtiene todos los empleados de una compañía específica.
+ * @param companyId El ID de la compañía.
+ * @returns Una promesa que se resuelve en un array de empleados.
+ */
+export const getEmployeesByCompany = async (companyId: string): Promise<Employee[]> => {
+  console.log(`Fetching employees for company ID: ${companyId}`);
+  const response = await fetch(`${API_URL}/employees/by-company/${companyId}`);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
   }
+  return response.json();
+};
+
+/**
+ * Crea un nuevo empleado.
+ * @param employeeData Los datos del nuevo empleado (incluyendo email, password, etc.).
+ * @param companyId El ID de la compañía a la que pertenece el empleado.
+ * @returns Una promesa que se resuelve con el objeto del empleado creado.
+ */
+export const createEmployee = async (employeeData: EmployeeCreationData, companyId: string): Promise<Employee> => {
+  const response = await fetch(`${API_URL}/employees`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...employeeData, companyId }), // Incluimos companyId en el cuerpo
+    },
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({})); // Intenta obtener detalles del error
+    throw new Error(errorData.error || 'No se pudo crear el empleado');
+  }
+
+  return response.json();
+};
+
+
+// --- Funciones por migrar ---
+
+// TODO: Migrar este endpoint al nuevo backend
+// export const addLog = async (data) => { ... }
+
+// TODO: Migrar este endpoint al nuevo backend
+// export const addEmployee = async (data) => { ... }
+
+// ... y así con el resto de funciones antiguas ...
+
+/**
+ * Elimina un empleado por su ID.
+ * @param employeeId El ID del empleado a eliminar.
+ * @returns Una promesa que se resuelve cuando la operación es exitosa.
+ */
+export const deleteEmployeeById = async (employeeId: string): Promise<void> => {
+  console.log(`Attempting to delete employee with ID: ${employeeId}`);
+  const response = await fetch(`${API_URL}/employees/${employeeId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    // Si el servidor responde con un error, lo lanzamos
+    const errorData = await response.json().catch(() => ({})); // Intenta parsear el error, si no, objeto vacío
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  // Para un DELETE exitoso (status 204), no hay cuerpo que devolver.
+};
+
+/**
+ * Actualiza un empleado por su ID.
+ * @param employeeId El ID del empleado a actualizar.
+ * @param data Los datos a actualizar (ej. { full_name, hourly_rate }).
+ * @returns Una promesa que se resuelve con los datos del empleado actualizado.
+ */
+export const updateEmployeeById = async (employeeId: string, data: Partial<Employee>): Promise<Employee> => {
+  console.log(`Attempting to update employee ${employeeId} with data:`, data);
+  const response = await fetch(`${API_URL}/employees/${employeeId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  return response.json();
 };

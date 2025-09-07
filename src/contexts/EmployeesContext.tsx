@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { apiService } from '@/services/api';
-import { type Employee } from '@/types';
+import { getEmployeesByCompany, createEmployee, deleteEmployeeById, updateEmployeeById } from '@/services/api';
+import { type Employee, type EmployeeCreationData } from '@/types';
 import { toast } from 'sonner';
 
 interface EmployeesContextType {
   employees: Employee[];
   loading: boolean;
   error: string | null;
-  addEmployee: (employee: Employee) => Promise<void>;
-  updateEmployee: (employee: Employee) => Promise<void>;
+  addEmployee: (employeeData: EmployeeCreationData) => Promise<void>;
+  updateEmployee: (employeeId: string, data: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   reloadEmployees: () => void;
 }
@@ -28,12 +28,13 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEmployees = useCallback(async () => {
+  const companyId = '4602c088-2129-4f2a-b1c7-694f2bd1ddbd'; // ID de compañía hardcoded temporalmente
+
+  const reloadEmployees = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      console.log('EmployeesContext: Setting loading to true');
-      const { employees } = await apiService.fetchData();
-      setEmployees(employees);
+      const fetchedEmployees = await getEmployeesByCompany(companyId);
+      setEmployees(fetchedEmployees);
       setError(null);
     } catch (err) {
       setError('Failed to fetch employees');
@@ -41,51 +42,48 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       toast.error('Error al cargar los empleados.');
     } finally {
       setLoading(false);
-      console.log('EmployeesContext: Setting loading to false');
     }
   }, []);
 
-  console.log('EmployeesProvider rendering, current loading state:', loading);
-
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    reloadEmployees();
+  }, [reloadEmployees]);
 
-  const handleOptimisticUpdate = async (
-    apiCall: () => Promise<any>,
-    optimisticUpdate: () => void
-  ) => {
-    const previousState = [...employees];
-    optimisticUpdate();
+  const addEmployee = async (employeeData: EmployeeCreationData) => {
     try {
-      await apiCall();
-      toast.success('Operación de empleado completada.');
+      await createEmployee(employeeData, companyId);
+      toast.success('Empleado agregado exitosamente');
+      await reloadEmployees(); // Recargar la lista para mostrar el nuevo empleado
     } catch (err) {
       console.error(err);
-      toast.error('Falló la operación. Revirtiendo cambios.');
-      setEmployees(previousState);
+      const errorMessage = (err as Error).message || 'No se pudo agregar el empleado.';
+      toast.error('Error al agregar empleado', { description: errorMessage });
+      throw err; // Re-lanzar el error para que el formulario sepa que falló
     }
   };
 
-  const addEmployee = async (employee: Employee) => {
-    await handleOptimisticUpdate(
-      () => apiService.addEmployee(employee),
-      () => setEmployees(current => [...current, employee])
-    );
+  const updateEmployee = async (employeeId: string, data: Partial<Employee>) => {
+    try {
+      await updateEmployeeById(employeeId, data);
+      toast.success('Empleado actualizado correctamente.');
+      await reloadEmployees();
+    } catch (error) {
+      console.error('Failed to update employee:', error);
+      const errorMessage = (error as Error).message || 'No se pudo actualizar el empleado.';
+      toast.error('Error al actualizar', { description: errorMessage });
+    }
   };
 
-  const updateEmployee = async (employee: Employee) => {
-    await handleOptimisticUpdate(
-      () => apiService.updateEmployee(employee),
-      () => setEmployees(current => current.map(e => (e.id === employee.id ? employee : e)))
-    );
-  };
-
-  const deleteEmployee = async (id: string) => {
-    await handleOptimisticUpdate(
-      () => apiService.deleteEmployee(id),
-      () => setEmployees(current => current.filter(e => e.id !== id))
-    );
+  const deleteEmployee = async (employeeId: string) => {
+    try {
+      await deleteEmployeeById(employeeId);
+      toast.success('Empleado eliminado correctamente.');
+      await reloadEmployees();
+    } catch (error) {
+      console.error('Failed to delete employee:', error);
+      const errorMessage = (error as Error).message || 'No se pudo eliminar el empleado.';
+      toast.error('Error al eliminar', { description: errorMessage });
+    }
   };
 
   return (
@@ -97,7 +95,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         addEmployee,
         updateEmployee,
         deleteEmployee,
-        reloadEmployees: fetchEmployees,
+        reloadEmployees,
       }}
     >
       {children}

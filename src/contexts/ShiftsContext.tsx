@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { apiService } from '@/services/api';
+import { updateShift, deleteLog } from '@/services/api';
 import { type TimeLog } from '@/types';
 import { toast } from 'sonner';
 
@@ -30,8 +30,8 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const fetchShifts = useCallback(async () => {
     try {
       setLoading(true);
-      const { logs } = await apiService.fetchData();
-      setShifts(logs);
+      // const { logs } = await fetchData(); // TODO: Re-implementar con la nueva API
+      setShifts([]); // Devolver un array vacío por ahora
       setError(null);
     } catch (err) {
       setError('Failed to fetch shifts');
@@ -60,12 +60,12 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateShift = async (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => {
     await handleRefetchingApiCall(() =>
-      apiService.updateShift(entryRow, exitRow, entryTimestamp, exitTimestamp)
+      updateShift(entryRow, exitRow, entryTimestamp, exitTimestamp)
     );
   };
 
   const deleteLog = async (row: number) => {
-    await handleRefetchingApiCall(() => apiService.deleteLog(row));
+    await handleRefetchingApiCall(() => deleteLog(row));
   };
 
   return (

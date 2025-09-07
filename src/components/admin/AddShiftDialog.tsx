@@ -5,7 +5,7 @@ import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { isAfter } from 'date-fns';
-import { apiService } from '@/services/api';
+// import { apiService } from '@/services/api';
 import { type Employee } from '@/types';
 
 interface AddShiftDialogProps {
@@ -23,36 +23,16 @@ const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, onShif
   const { toast } = useToast();
 
   const handleSubmit = async () => {
-    if (!employeeId || !entryTime || !exitTime) {
-      toast({ title: "Error", description: "Por favor, completa todos los campos.", variant: "destructive" });
-      return;
-    }
+    // TODO: Migrar la lógica de addLog al nuevo servicio de API
+    // apiService.addLog({ ... });
+    // apiService.addLog({ ... });
 
-    if (isAfter(entryTime, new Date()) || isAfter(exitTime, new Date())) {
-      toast({ title: "Error de Validación", description: "No se pueden registrar horas en el futuro.", variant: "destructive" });
-      return;
-    }
-
-    if (!isAfter(exitTime, entryTime)) {
-      toast({ title: "Error de Validación", description: "La hora de salida debe ser posterior a la hora de entrada.", variant: "destructive" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Add entry log
-      await apiService.addLog(employeeId, 'ENTRADA', entryTime.toISOString(), 'Manual');
-      // Add exit log
-      await apiService.addLog(employeeId, 'SALIDA', exitTime.toISOString(), 'Manual');
-
-      toast({ title: "Éxito", description: "El nuevo turno ha sido agregado correctamente." });
-      onShiftAdded();
-      onClose();
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudo agregar el turno.", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, entryTime, exitTime });
+    toast({
+      title: 'Función en desarrollo',
+      description: 'El guardado del turno manual será implementado con la nueva API.',
+    });
+    onClose();
   };
 
   return (

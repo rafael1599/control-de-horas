@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Trash2, Edit, Plus } from 'lucide-react';
-import { apiService } from '@/services/api';
+// import { apiService } from '@/services/api';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { differenceInHours, differenceInMinutes, format } from 'date-fns';
 import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
@@ -94,19 +94,23 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
   };
 
   const handleDeleteShift = async (shift: ProcessedShift) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible.')) return;
-
-    try {
-        if (shift.exitRow && shift.entryRow) {
-            await apiService.deleteShift(shift.entryRow, shift.exitRow);
-        } else {
-            await apiService.deleteLog(shift.entryRow);
-        }
-        onCorrectionComplete(); // Reload data
-    } catch (error) {
-        console.error("Failed to delete shift", error);
-        // Here you might want to show a toast to the user
-    }
+    // TODO: Migrar la lógica de deleteShift al nuevo servicio de API
+    // if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible.')) return;
+    // try {
+    //     if (shift.exitRow && shift.entryRow) {
+    //         await apiService.deleteShift(shift.entryRow, shift.exitRow);
+    //     } else {
+    //         await apiService.deleteLog(shift.entryRow);
+    //     }
+    //     onCorrectionComplete(); // Reload data
+    // } catch (error) {
+    //     console.error("Failed to delete shift", error);
+    // }
+    console.log("Lógica de 'deleteShift' pendiente de migración.", shift);
+    // toast({
+    //   title: 'Función en desarrollo',
+    //   description: 'La eliminación de turnos será implementada con la nueva API.',
+    // });
   }
 
   return (

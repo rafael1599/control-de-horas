@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { useToast } from '@/hooks/use-toast';
 import { addHours, isAfter, isBefore } from 'date-fns';
-import { apiService } from '@/services/api';
+// import { apiService } from '@/services/api';
 import { type ProcessedShift } from '@/types';
 
 // Assuming ProcessedShift is defined in ShiftsTable and imported here
@@ -43,43 +43,15 @@ const ManualExitDialog: React.FC<ManualExitDialogProps> = ({ isOpen, onClose, sh
   }, [isOpen, maxDate, shift]);
 
   const handleSubmit = async () => {
-    if (!exitTime) {
-      toast({
-        title: "Error",
-        description: "Por favor, selecciona una fecha y hora de salida.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Final validation check before submitting
-    if (isAfter(exitTime, maxDate) || isBefore(exitTime, minDate)) {
-        toast({
-            title: "Error de Validación",
-            description: `La hora de salida debe estar entre el inicio del turno y el límite de corrección.`,
-            variant: "destructive",
-        });
-        return;
-    }
-
-    setLoading(true);
-    try {
-      await apiService.addLog(shift.employeeId, 'SALIDA', exitTime.toISOString(), 'Manual');
-      toast({
-        title: "Éxito",
-        description: `Salida corregida para ${shift.employeeName}`,
-      });
-      onCorrectionComplete(); // Reload data in the main view
-      onClose();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo guardar la corrección.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    // TODO: Migrar la lógica de addLog al nuevo servicio de API
+    // await apiService.addLog(shift.employeeId, 'SALIDA', exitTime.toISOString(), 'Manual');
+    
+    console.log("Lógica de 'addLog' pendiente de migración.", { shift, exitTime });
+    toast({
+      title: 'Función en desarrollo',
+      description: 'El guardado de la corrección será implementado con la nueva API.',
+    });
+    onClose();
   };
 
   return (

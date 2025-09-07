@@ -1,74 +1,77 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiService } from '@/services/api'; // Import apiService
-
-const SESSION_STORAGE_KEY = 'admin_session';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+// import { verifyPassword } from '@/services/api'; // <--- COMENTADO
+import { useToast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
   isAdmin: boolean;
-  loginError: string;
-  login: (password: string) => Promise<void>; // login is now async
+  loading: boolean;
+  loginError: string | null;
+  login: (password: string) => Promise<void>;
   logout: () => void;
 }
 
-const defaultAuthContext: AuthContextType = {
-  isAdmin: false,
-  loginError: '',
-  login: async () => {},
-  logout: () => {},
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
-const AuthContext = createContext<AuthContextType>(defaultAuthContext);
-
-export const useAuth = () => useContext(AuthContext);
-
+// Actualización de la lógica de login
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const session = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (session) {
-      try {
-        const sessionData = JSON.parse(session);
-        if (sessionData.loggedIn) {
-          setIsAdmin(true);
-        }
-      } catch (error) {
-        console.error("Failed to parse admin session:", error);
-      }
+    const adminSession = sessionStorage.getItem('isAdmin');
+    if (adminSession === 'true') {
+      setIsAdmin(true);
     }
+    setLoading(false);
   }, []);
 
   const login = async (password: string) => {
-    setLoginError(''); // Clear previous errors
+    setLoginError(null);
     try {
-      const { success } = await apiService.verifyPassword(password);
+      // --- LÓGICA DE LOGIN MODIFICADA ---
+      // TODO: Migrar la verificación de contraseña al nuevo backend.
+      // Por ahora, usaremos una contraseña fija en el frontend para pruebas.
+      const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '1111';
+      const success = password === adminPassword;
+
       if (success) {
         setIsAdmin(true);
-        sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ loggedIn: true }));
+        sessionStorage.setItem('isAdmin', 'true');
+        toast({
+          title: 'Éxito',
+          description: 'Has iniciado sesión como administrador.',
+        });
       } else {
-        setLoginError('Contraseña incorrecta');
+        throw new Error('Contraseña incorrecta');
       }
     } catch (error) {
-      console.error("Login API call failed:", error);
-      setLoginError('Error al conectar con el servidor. Inténtalo de nuevo.');
+      const errorMessage = (error as Error).message;
+      setLoginError(errorMessage);
+      toast({
+        title: 'Error de inicio de sesión',
+        description: errorMessage,
+        variant: 'destructive',
+      });
     }
   };
 
   const logout = () => {
     setIsAdmin(false);
-    sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    sessionStorage.removeItem('isAdmin');
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        isAdmin,
-        login,
-        logout,
-        loginError,
-      }}
-    >
+    <AuthContext.Provider value={{ isAdmin, loading, login, logout, loginError }}>
       {children}
     </AuthContext.Provider>
   );

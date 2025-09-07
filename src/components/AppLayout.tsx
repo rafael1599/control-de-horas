@@ -4,7 +4,7 @@ import EmployeeClockIn from './EmployeeClockIn';
 import WeeklyDashboard from './WeeklyDashboard';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
-import { apiService } from '@/services/api';
+// import { apiService } from '@/services/api';
 import { type Employee, type TimeLog } from '@/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -35,12 +35,14 @@ const AppLayout: React.FC = () => {
   const overallLoading = loadingEmployees || loadingShifts || isActionLoading;
 
   const proceedWithClockIn = async (employeeId: string) => {
-      await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
+      // TODO: Migrar la lógica de addLog al nuevo servicio de API
+      // await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
+      console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, type: 'ENTRADA' });
       await reloadShifts();
       
       const employee = employees.find(e => e.id === employeeId);
       toast({
-        title: "Éxito",
+        title: "Éxito (Simulado)",
         description: `ENTRADA registrada para ${employee?.name}`,
       });
   }
@@ -83,11 +85,13 @@ const AppLayout: React.FC = () => {
                  return;
              }
              
-             await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
+             // TODO: Migrar la lógica de addLog al nuevo servicio de API
+             // await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
+             console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, type: 'SALIDA' });
              await reloadShifts();
              const employee = employees.find(e => e.id === employeeId);
              toast({
-                title: "Éxito",
+                title: "Éxito (Simulado)",
                 description: `SALIDA registrada para ${employee?.name}`,
             });
         }
@@ -113,12 +117,14 @@ const AppLayout: React.FC = () => {
           }
       }
       
-      await apiService.addLog(employeeId, type, undefined, 'Automático');
+      // TODO: Migrar la lógica de addLog al nuevo servicio de API
+      // await apiService.addLog(employeeId, type, undefined, 'Automático');
+      console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, type });
       await reloadShifts();
       
       const employee = employees.find(e => e.id === employeeId);
       toast({
-        title: "Éxito",
+        title: "Éxito (Simulado)",
         description: `${type} registrada para ${employee?.name}`,
       });
     } catch (error) {
@@ -146,14 +152,16 @@ const AppLayout: React.FC = () => {
     try {
       setShowManualClockIn(false);
       
-      await apiService.addLog(employeeForManualClockIn, 'ENTRADA', manualClockInTime.toISOString(), 'Manual');
-      await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
+      // TODO: Migrar la lógica de addLog al nuevo servicio de API
+      // await apiService.addLog(employeeForManualClockIn, 'ENTRADA', manualClockInTime.toISOString(), 'Manual');
+      // await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
+      console.log("Lógica de 'addLog' pendiente de migración.", { employeeForManualClockIn, manualClockInTime });
       
       await reloadShifts();
       await reloadEmployees();
       const employee = employees.find(e => e.id === employeeForManualClockIn);
       toast({
-        title: "Éxito",
+        title: "Éxito (Simulado)",
         description: `Entrada manual y salida registrada para ${employee?.name}`,
       });
     } catch (error) {
