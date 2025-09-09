@@ -7,6 +7,7 @@ interface EmployeesContextType {
   employees: Employee[];
   loading: boolean;
   error: string | null;
+  companyId: string | null; // <-- AÑADIDO
   addEmployee: (employeeData: EmployeeCreationData) => Promise<void>;
   updateEmployee: (employeeId: string, data: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
@@ -28,9 +29,11 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const companyId = '4602c088-2129-4f2a-b1c7-694f2bd1ddbd'; // ID de compañía hardcoded temporalmente
+  // ID de compañía hardcoded temporalmente. Ahora será accesible globalmente.
+  const companyId = '4602c088-2129-4f2a-b1c7-694f2bd1ddbd';
 
   const reloadEmployees = useCallback(async () => {
+    if (!companyId) return;
     setLoading(true);
     try {
       const fetchedEmployees = await getEmployeesByCompany(companyId);
@@ -43,22 +46,26 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     reloadEmployees();
   }, [reloadEmployees]);
 
   const addEmployee = async (employeeData: EmployeeCreationData) => {
+    if (!companyId) {
+      toast.error("Error: ID de compañía no encontrado.");
+      return;
+    }
     try {
       await createEmployee(employeeData, companyId);
       toast.success('Empleado agregado exitosamente');
-      await reloadEmployees(); // Recargar la lista para mostrar el nuevo empleado
+      await reloadEmployees();
     } catch (err) {
       console.error(err);
       const errorMessage = (err as Error).message || 'No se pudo agregar el empleado.';
       toast.error('Error al agregar empleado', { description: errorMessage });
-      throw err; // Re-lanzar el error para que el formulario sepa que falló
+      throw err;
     }
   };
 
@@ -92,6 +99,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         employees,
         loading,
         error,
+        companyId, // <-- AÑADIDO
         addEmployee,
         updateEmployee,
         deleteEmployee,

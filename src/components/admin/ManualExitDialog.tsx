@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
+import { useShifts } from '@/contexts/ShiftsContext';
 import { useToast } from '@/hooks/use-toast';
 import { addHours, isAfter, isBefore } from 'date-fns';
+import { MAX_SHIFT_HOURS } from '@/config/rules';
 // import { apiService } from '@/services/api';
 import { type ProcessedShift } from '@/types';
 
@@ -42,16 +44,26 @@ const ManualExitDialog: React.FC<ManualExitDialogProps> = ({ isOpen, onClose, sh
     }
   }, [isOpen, maxDate, shift]);
 
+  const { updateShift } = useShifts();
+
   const handleSubmit = async () => {
-    // TODO: Migrar la lógica de addLog al nuevo servicio de API
-    // await apiService.addLog(shift.employeeId, 'SALIDA', exitTime.toISOString(), 'Manual');
-    
-    console.log("Lógica de 'addLog' pendiente de migración.", { shift, exitTime });
-    toast({
-      title: 'Función en desarrollo',
-      description: 'El guardado de la corrección será implementado con la nueva API.',
-    });
-    onClose();
+    if (!exitTime) {
+      toast({ title: 'Error', description: 'Por favor, selecciona una hora de salida.' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await updateShift(shift.id, { end_time: exitTime });
+      toast({ title: 'Éxito', description: 'El turno ha sido corregido exitosamente.' });
+      onCorrectionComplete();
+      onClose();
+    } catch (error) {
+      // The error is already toasted by the context
+      console.error("Failed to correct shift:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

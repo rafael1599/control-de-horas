@@ -1,12 +1,7 @@
-import { Employee, EmployeeCreationData } from '@/types'; // Asumimos que Employee se importa desde types
+import { Employee, EmployeeCreationData, TimeLog } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
 
-/**
- * Obtiene todos los empleados de una compañía específica.
- * @param companyId El ID de la compañía.
- * @returns Una promesa que se resuelve en un array de empleados.
- */
 export const getEmployeesByCompany = async (companyId: string): Promise<Employee[]> => {
   console.log(`Fetching employees for company ID: ${companyId}`);
   const response = await fetch(`${API_URL}/employees/by-company/${companyId}`);
@@ -16,12 +11,6 @@ export const getEmployeesByCompany = async (companyId: string): Promise<Employee
   return response.json();
 };
 
-/**
- * Crea un nuevo empleado.
- * @param employeeData Los datos del nuevo empleado (incluyendo email, password, etc.).
- * @param companyId El ID de la compañía a la que pertenece el empleado.
- * @returns Una promesa que se resuelve con el objeto del empleado creado.
- */
 export const createEmployee = async (employeeData: EmployeeCreationData, companyId: string): Promise<Employee> => {
   const response = await fetch(`${API_URL}/employees`,
     {
@@ -29,34 +18,18 @@ export const createEmployee = async (employeeData: EmployeeCreationData, company
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...employeeData, companyId }), // Incluimos companyId en el cuerpo
+      body: JSON.stringify({ ...employeeData, companyId }),
     },
   );
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})); // Intenta obtener detalles del error
+    const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || 'No se pudo crear el empleado');
   }
 
   return response.json();
 };
 
-
-// --- Funciones por migrar ---
-
-// TODO: Migrar este endpoint al nuevo backend
-// export const addLog = async (data) => { ... }
-
-// TODO: Migrar este endpoint al nuevo backend
-// export const addEmployee = async (data) => { ... }
-
-// ... y así con el resto de funciones antiguas ...
-
-/**
- * Elimina un empleado por su ID.
- * @param employeeId El ID del empleado a eliminar.
- * @returns Una promesa que se resuelve cuando la operación es exitosa.
- */
 export const deleteEmployeeById = async (employeeId: string): Promise<void> => {
   console.log(`Attempting to delete employee with ID: ${employeeId}`);
   const response = await fetch(`${API_URL}/employees/${employeeId}`, {
@@ -64,20 +37,11 @@ export const deleteEmployeeById = async (employeeId: string): Promise<void> => {
   });
 
   if (!response.ok) {
-    // Si el servidor responde con un error, lo lanzamos
-    const errorData = await response.json().catch(() => ({})); // Intenta parsear el error, si no, objeto vacío
+    const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || 'Network response was not ok');
   }
-
-  // Para un DELETE exitoso (status 204), no hay cuerpo que devolver.
 };
 
-/**
- * Actualiza un empleado por su ID.
- * @param employeeId El ID del empleado a actualizar.
- * @param data Los datos a actualizar (ej. { full_name, hourly_rate }).
- * @returns Una promesa que se resuelve con los datos del empleado actualizado.
- */
 export const updateEmployeeById = async (employeeId: string, data: Partial<Employee>): Promise<Employee> => {
   console.log(`Attempting to update employee ${employeeId} with data:`, data);
   const response = await fetch(`${API_URL}/employees/${employeeId}`, {
@@ -86,6 +50,93 @@ export const updateEmployeeById = async (employeeId: string, data: Partial<Emplo
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  return response.json();
+};
+
+export const clockInOut = async (employeeId: string, companyId: string) => {
+  console.log(`Attempting to clock in/out for employee: ${employeeId}`);
+  const response = await fetch(`${API_URL}/time-entries/clock`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ employeeId, companyId }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  return response.json();
+};
+
+export const getTimeEntriesByCompany = async (companyId: string): Promise<TimeLog[]> => {
+  console.log(`Fetching time entries for company ID: ${companyId}`);
+  const response = await fetch(`${API_URL}/time-entries/by-company/${companyId}`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+  return response.json();
+};
+
+export const createManualShift = async (shiftData: { 
+  employeeId: string; 
+  companyId: string; 
+  start_time: Date; 
+  end_time: Date; 
+}) => {
+  const response = await fetch(`${API_URL}/time-entries/manual`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(shiftData),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  return response.json();
+};
+
+export const deleteShift = async (shiftId: string) => {
+  const response = await fetch(`${API_URL}/time-entries/${shiftId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  if (response.status !== 204) {
+    return response.json();
+  }
+};
+
+/**
+ * Actualiza un turno por su ID.
+ * @param shiftId El ID del turno a actualizar.
+ * @param shiftData Los datos a actualizar.
+ */
+export const updateShift = async (shiftId: string, shiftData: { start_time?: Date; end_time?: Date }) => {
+  const response = await fetch(`${API_URL}/time-entries/${shiftId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(shiftData),
   });
 
   if (!response.ok) {

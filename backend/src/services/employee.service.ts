@@ -5,9 +5,22 @@ const prisma = new PrismaClient();
 
 // Servicio para obtener todos los empleados de una compañía
 export const getAllEmployeesByCompany = async (companyId: string) => {
-  return await prisma.employee.findMany({
+  const employees = await prisma.employee.findMany({
     where: { companyId },
     orderBy: { createdAt: 'asc' },
+    include: {
+      user: {
+        select: {
+          email: true,
+        },
+      },
+    },
+  });
+
+  return employees.map(employee => {
+    const { user, ...rest } = employee;
+    const employeeWithEmail = { ...rest, email: user?.email || undefined };
+    return employeeWithEmail;
   });
 };
 

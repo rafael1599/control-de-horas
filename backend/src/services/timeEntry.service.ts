@@ -2,41 +2,79 @@ import { PrismaClient, TimeEntry } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-/**
- * Registra una entrada o salida para un empleado.
- * Busca el último registro de tiempo del empleado:
- * - Si está abierto, lo cierra (clock-out).
- * - Si está cerrado o no existe, crea uno nuevo (clock-in).
- * @param employeeId El ID del empleado que está fichando.
- * @param companyId El ID de la compañía a la que pertenece el empleado.
- * @returns El registro de tiempo creado o actualizado.
- */
 export const clockEmployee = async (employeeId: string, companyId: string): Promise<TimeEntry> => {
-  // 1. Buscar el último registro de tiempo para este empleado
-  const lastTimeEntry = await prisma.timeEntry.findFirst({
-    where: { employeeId },
-    orderBy: { start_time: 'desc' }, // Corrected
+  const openTimeEntry = await prisma.timeEntry.findFirst({
+    where: {
+      employeeId: employeeId,
+      end_time: null,
+    },
   });
 
-  // 2. Si hay un último registro y no tiene hora de fin, es un clock-out
-  if (lastTimeEntry && !lastTimeEntry.end_time) { // Corrected
+  if (openTimeEntry) {
     const updatedTimeEntry = await prisma.timeEntry.update({
-      where: { id: lastTimeEntry.id },
-      data: { end_time: new Date() }, // Corrected
+      where: { id: openTimeEntry.id },
+      data: { end_time: new Date() },
     });
+    console.log(`Clock-out for employee ${employeeId}. Shift ID: ${updatedTimeEntry.id}`);
     return updatedTimeEntry;
   }
   
-  // 3. De lo contrario, es un clock-in
   else {
     const newTimeEntry = await prisma.timeEntry.create({
       data: {
-        start_time: new Date(), // Corrected
+        start_time: new Date(),
         employeeId,
         companyId,
-        // projectId y locationId se pueden añadir aquí si se envían desde el frontend
       },
     });
+    console.log(`Clock-in for employee ${employeeId}. New Shift ID: ${newTimeEntry.id}`);
     return newTimeEntry;
   }
+};
+
+export const getTimeEntriesByCompany = async (companyId: string): Promise<TimeEntry[]> => {
+  const timeEntries = await prisma.timeEntry.findMany({
+    where: { companyId },
+    orderBy: {
+      start_time: 'desc',
+    },
+  });
+  return timeEntries;
+};
+
+export const createManualShift = async (data: {
+  employeeId: string;
+  companyId: string;
+  start_time: Date;
+  end_time: Date;
+}): Promise<TimeEntry> => {
+  const newTimeEntry = await prisma.timeEntry.create({
+    data: {
+      employeeId: data.employeeId,
+      companyId: data.companyId,
+      start_time: data.start_time,
+      end_time: data.end_time,
+    },
+  });
+  return newTimeEntry;
+};
+
+export const deleteShiftById = async (timeEntryId: string): Promise<void> => {
+  await prisma.timeEntry.delete({
+    where: { id: timeEntryId },
+  });
+};
+
+/**
+ * Actualiza un registro de tiempo por su ID.
+ * @param timeEntryId El ID del registro a actualizar.
+ * @param data Los datos a actualizar (start_time y/o end_time).
+ * @returns El registro de tiempo actualizado.
+ */
+export const updateShiftById = async (timeEntryId: string, data: { start_time?: Date; end_time?: Date }): Promise<TimeEntry> => {
+  const updatedTimeEntry = await prisma.timeEntry.update({
+    where: { id: timeEntryId },
+    data,
+  });
+  return updatedTimeEntry;
 };

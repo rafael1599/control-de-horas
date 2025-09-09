@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddEmployeeForm from './admin/AddEmployeeForm';
@@ -7,12 +7,14 @@ import ShiftsTable from './admin/ShiftsTable';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Employee } from '@/types'; // Import Employee type
 
 interface AdminPanelProps {
   onBack: () => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
+  const [selectedEmployeeToEdit, setSelectedEmployeeToEdit] = useState<Employee | null>(null);
   const {
     employees,
     loading: loadingEmployees,
@@ -57,11 +59,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </TabsList>
 
         <TabsContent value="employees" className="space-y-4">
-          <AddEmployeeForm onAddEmployee={addEmployee} loading={loading} />
-          <EmployeesTable 
-            employees={employees} 
-            onUpdateEmployee={updateEmployee} 
-            onDeleteEmployee={deleteEmployee} 
+          <AddEmployeeForm
+            onAddEmployee={addEmployee}
+            onUpdateEmployee={updateEmployee} // ADDED: Pass the updateEmployee function
+            loading={loading}
+            employeeToEdit={selectedEmployeeToEdit}
+            onCancelEdit={() => setSelectedEmployeeToEdit(null)}
+            employees={employees} // ADDED: Pass the employees array
+          />
+          <EmployeesTable
+            employees={employees}
+            onUpdateEmployee={updateEmployee} // This prop is no longer used by EmployeesTable, but keeping it for now.
+            onDeleteEmployee={deleteEmployee}
+            onSelectEmployeeForEdit={(employee) => {
+              setSelectedEmployeeToEdit(employee);
+              console.log('Selected employee for edit:', employee);
+            }} // ADDED
           />
         </TabsContent>
 

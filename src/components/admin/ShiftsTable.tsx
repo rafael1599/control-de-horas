@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useShifts } from '@/contexts/ShiftsContext';
 import { Trash2, Edit, Plus } from 'lucide-react';
 // import { apiService } from '@/services/api';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
@@ -24,7 +25,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
   const [selectedShift, setSelectedShift] = useState<ProcessedShift | null>(null);
 
   const processedShifts = useMemo(() => {
-    const employeeMap = new Map(employees.map(e => [e.id, e.name]));
+    const employeeMap = new Map(employees.map(e => [e.id, e.full_name]));
     const openShifts = new Map<string, TimeLog>();
     const shifts: ProcessedShift[] = [];
 
@@ -35,7 +36,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
         if (openShifts.has(log.employeeId)) {
           const openShift = openShifts.get(log.employeeId)!;
           shifts.push({
-            id: `${openShift.employeeId}-${openShift.timestamp}`,
+            id: openShift.shiftId!,
             employeeId: openShift.employeeId,
             employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
             entryTimestamp: openShift.timestamp,
@@ -48,7 +49,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
         if (openShifts.has(log.employeeId)) {
           const openShift = openShifts.get(log.employeeId)!;
           shifts.push({
-            id: `${openShift.employeeId}-${openShift.timestamp}`,
+            id: openShift.shiftId!, // <-- ID CORREGIDO
             employeeId: openShift.employeeId,
             employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
             entryTimestamp: openShift.timestamp,
@@ -67,7 +68,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
 
     openShifts.forEach(openShift => {
       shifts.push({
-        id: `${openShift.employeeId}-${openShift.timestamp}`,
+        id: openShift.shiftId!,
         employeeId: openShift.employeeId,
         employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
         entryTimestamp: openShift.timestamp,
@@ -93,24 +94,16 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
     setIsAddShiftDialogOpen(false);
   };
 
+  const { deleteShift } = useShifts();
+
   const handleDeleteShift = async (shift: ProcessedShift) => {
-    // TODO: Migrar la lógica de deleteShift al nuevo servicio de API
-    // if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible.')) return;
-    // try {
-    //     if (shift.exitRow && shift.entryRow) {
-    //         await apiService.deleteShift(shift.entryRow, shift.exitRow);
-    //     } else {
-    //         await apiService.deleteLog(shift.entryRow);
-    //     }
-    //     onCorrectionComplete(); // Reload data
-    // } catch (error) {
-    //     console.error("Failed to delete shift", error);
-    // }
-    console.log("Lógica de 'deleteShift' pendiente de migración.", shift);
-    // toast({
-    //   title: 'Función en desarrollo',
-    //   description: 'La eliminación de turnos será implementada con la nueva API.',
-    // });
+    if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible.')) return;
+    try {
+      await deleteShift(shift.id);
+    } catch (error) {
+      // Error is already handled and toasted in the context
+      console.error("Failed to delete shift from component:", error);
+    }
   }
 
   return (
@@ -199,7 +192,6 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
           <EditShiftDialog 
             isOpen={isEditShiftDialogOpen} 
             onClose={handleCloseDialogs} 
-            onUpdate={onUpdateShift}
             shift={selectedShift}
           />
       )}
@@ -208,3 +200,5 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
 };
 
 export default ShiftsTable;
+
+// Cache-busting comment

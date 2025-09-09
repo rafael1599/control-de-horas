@@ -1,25 +1,41 @@
-# Historias de Usuario - Sistema de Control Horario
+# Historias de Usuario
 
-## Introducción
+## Módulo: Fichaje de Empleados
 
-Este documento recopila las funcionalidades del sistema descritas desde la perspectiva de sus usuarios. Nos ayuda a entender el "porqué" de cada característica y a mantener el desarrollo centrado en el valor que se entrega.
+*   **US-001:** Como empleado, quiero poder fichar mi entrada y salida para registrar mis horas de trabajo.
+*   **US-002:** Como empleado, quiero ver mi estado actual (fichado/no fichado) para saber si mi registro fue exitoso.
+*   **US-003:** Como empleado, quiero seleccionar mi nombre de una lista para fichar mi entrada o salida.
 
-El formato utilizado es: "Como `<tipo de usuario>`, quiero `<realizar una acción>` para poder `<obtener un beneficio>`".
+## Módulo: Autenticación y Acceso de Administrador
 
-Este archivo se actualizará a medida que abordemos nuevas funcionalidades o módulos.
+*   **US-006:** Como administrador, quiero iniciar sesión con una contraseña para acceder al panel de administración.
+*   **US-007:** Como administrador, quiero que el sistema me informe si mi intento de inicio de sesión fue incorrecto para poder corregirlo.
+*   **US-008:** Como administrador, quiero cerrar mi sesión para proteger el acceso al panel de administración.
 
----
-## Módulo: Fichaje Básico (Funcionalidad Existente)
+## Módulo: Gestión de Empleados
 
-- **Como empleado,** quiero ver mi nombre en una lista y un botón claro de "Entrar" o "Salir" para poder registrar mis horas de trabajo de forma rápida y sin errores.
-- **Como administrador,** quiero ver en tiempo real qué empleados han fichado su entrada para poder saber quién está trabajando en cada momento.
+*   **US-004:** Como administrador, quiero añadir nuevos empleados al sistema para que puedan registrar sus horas.
+*   **US-005:** Como administrador, quiero ver una lista de todos los empleados registrados para tener una visión general.
+*   **US-009:** Como administrador, quiero poder actualizar la información de un empleado existente (ej. nombre, tarifa por hora) para mantener los datos precisos.
+*   **US-010:** Como administrador, quiero poder eliminar empleados del sistema para gestionar la plantilla.
 
-## Módulo: Gestión de Empleados (Funcionalidad Existente)
+## Módulo: Reportes y Visualización de Horas
 
-- **Como administrador,** quiero poder añadir, editar y eliminar empleados desde un panel de control para poder mantener la lista de personal actualizada.
+*   **US-011:** Como administrador, quiero ver un resumen semanal de las horas trabajadas por cada empleado para monitorear la productividad.
+*   **US-012:** Como administrador, quiero ver el pago estimado semanal por empleado basado en sus horas y tarifa para la gestión de nóminas.
+*   **US-0013:** Como administrador, quiero ver los turnos activos en tiempo real para saber quién está actualmente fichado.
+*   **US-0014:** Como administrador, quiero navegar entre diferentes semanas en el resumen de horas para revisar historiales de trabajo.
 
-## Módulo: Gestión de Turnos (Funcionalidad Existente)
+## Módulo: Gestión y Corrección de Registros de Tiempo
 
-- **Como administrador,** quiero poder corregir manualmente la hora de entrada o salida de un turno para poder arreglar olvidos o errores de los empleados.
+*   **US-015:** Como administrador, quiero ver una tabla con todos los registros de entrada y salida de los empleados para una auditoría detallada.
+*   **US-016:** Como administrador, quiero poder corregir manualmente un registro de tiempo (ej. ajustar hora de entrada/salida) para rectificar errores.
+*   **US-017:** Como administrador, quiero poder añadir un registro de tiempo manual (ej. para un empleado que olvidó fichar) para asegurar la precisión de los datos.
+*   **US-018:** Como administrador, quiero poder eliminar un registro de tiempo existente para corregir entradas erróneas.
 
-*(Las historias de usuario para nuevas funcionalidades como "Cuentas de Empleado", "Planificador de Horarios", etc., se añadirán aquí antes de comenzar su desarrollo)*
+## Módulo: Validaciones de Fichaje
+
+*   **US-019:** Como sistema, quiero prevenir que un empleado registre una nueva entrada si ya tiene un turno abierto para evitar duplicidades.
+*   **US-020:** Como sistema, quiero advertir al empleado si intenta fichar entrada muy poco tiempo después de una salida para evitar errores de re-entrada rápida.
+*   **US-021:** Como sistema, quiero advertir al empleado si intenta fichar salida muy poco tiempo después de una entrada para evitar errores de salida rápida.
+*   **US-022:** Como sistema, quiero detectar y permitir la corrección manual de turnos anómalos (ej. salida sin entrada previa, turno excesivamente largo) para mantener la integridad de los datos.

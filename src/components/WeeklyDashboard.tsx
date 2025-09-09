@@ -69,9 +69,9 @@ const WeeklyDashboard: React.FC<WeeklyDashboardProps> = ({ employees, logs }) =>
             <TableBody>
               {weeklyData.map(({ employee, hours }) => (
                 <TableRow key={employee.id}>
-                  <TableCell className="font-medium">{employee.name}</TableCell>
+                  <TableCell className="font-medium">{employee.full_name}</TableCell>
                   <TableCell>{hours.toFixed(2)}</TableCell>
-                  <TableCell>${Math.round(hours * employee.rate)}</TableCell>
+                  <TableCell>${Math.round(hours * (employee.hourly_rate || 0))}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

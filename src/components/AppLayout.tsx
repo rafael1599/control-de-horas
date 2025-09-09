@@ -1,180 +1,186 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import EmployeeClockIn from './EmployeeClockIn';
+import React, { useState } from 'react';
+import { toast } from 'sonner'; // Usamos sonner para los toasts
+import { EmployeeClockIn } from './EmployeeClockIn';
 import WeeklyDashboard from './WeeklyDashboard';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
-// import { apiService } from '@/services/api';
-import { type Employee, type TimeLog } from '@/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { DateTimePicker } from './ui/DateTimePicker';
-import { subHours, differenceInMinutes, format } from 'date-fns';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from '@/components/ui/alert-dialog';
+import { clockInOut } from '@/services/api';
+import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
-import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, FAST_CLOCK_IN_THRESHOLD_MINUTES } from '@/config/rules';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+} from '@/components/ui/alert-dialog';
+import ManualExitDialog from './admin/ManualExitDialog';
+import { addHours, differenceInMinutes, isAfter, isBefore } from 'date-fns';
+import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, MIN_TIME_BETWEEN_SHIFTS_MINUTES } from '@/config/rules';
 
 const AppLayout: React.FC = () => {
   const { isAdmin, logout } = useAuth();
   const { employees, loading: loadingEmployees, reloadEmployees } = useEmployees();
-  const { shifts: logs, loading: loadingShifts, reloadShifts } = useShifts();
-  const [showManualClockIn, setShowManualClockIn] = useState(false);
-  const [employeeForManualClockIn, setEmployeeForManualClockIn] = useState<string | null>(null);
-  const [manualClockInTime, setManualClockInTime] = useState<Date | undefined>(undefined);
-  const [showClockInWarning, setShowClockInWarning] = useState(false);
-  const [pendingClockInData, setPendingClockInData] = useState<{ employeeId: string, type: 'ENTRADA' | 'SALIDA' } | null>(null);
-  const [lastClockOutTime, setLastClockOutTime] = useState<string>('');
-  const [showTurnCompletedWarning, setShowTurnCompletedWarning] = useState(false);
-  const [showLongTurnWarning, setShowLongTurnWarning] = useState(false);
+  const { shifts: logs, openShifts, processedShifts, loading: loadingShifts, reloadShifts, updateShift } = useShifts();
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  const { toast } = useToast();
+  const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [warningDetails, setWarningDetails] = useState<{ 
+    employeeId: string; 
+    action: 'in' | 'out' | 're-entry'; 
+    message: string; 
+    title: string; 
+  } | null>(null);
+
+  const [showManualExitDialog, setShowManualExitDialog] = useState(false);
+  const [anomalousShift, setAnomalousShift] = useState<ProcessedShift | null>(null);
 
   const overallLoading = loadingEmployees || loadingShifts || isActionLoading;
 
-  const proceedWithClockIn = async (employeeId: string) => {
-      // TODO: Migrar la lógica de addLog al nuevo servicio de API
-      // await apiService.addLog(employeeId, 'ENTRADA', undefined, 'Automático');
-      console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, type: 'ENTRADA' });
-      await reloadShifts();
-      
-      const employee = employees.find(e => e.id === employeeId);
-      toast({
-        title: "Éxito (Simulado)",
-        description: `ENTRADA registrada para ${employee?.name}`,
-      });
-  }
-  
-  const handleClockInWarningConfirm = async () => {
-    if (pendingClockInData) {
-        setIsActionLoading(true);
-        try {
-            setShowClockInWarning(false);
-            await proceedWithClockIn(pendingClockInData.employeeId);
-        } catch (error) {
-             toast({
-                title: "Error",
-                description: "No se pudo registrar la acción",
-                variant: "destructive"
-            });
-        } finally {
-            setPendingClockInData(null);
-            setIsActionLoading(false);
-        }
-    }
-  }
-
-  const handleClockAction = async (employeeId: string, type: 'ENTRADA' | 'SALIDA') => {
+  const handleClockAction = async (employeeId: string, currentStatus: 'in' | 'out') => {
+    console.log("handleClockAction: Iniciando acción para", employeeId, "estado", currentStatus);
     setIsActionLoading(true);
     try {
-      const employeeLogs = logs.filter(log => log.employeeId === employeeId).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      const lastLog = employeeLogs[0];
-      
-      if (type === 'SALIDA') {
-        if (!lastLog) {
-            setEmployeeForManualClockIn(employeeId);
-            setManualClockInTime(subHours(new Date(), 8));
-            setShowManualClockIn(true);
-        } else if (lastLog.type === 'SALIDA') {
-            setShowTurnCompletedWarning(true);
-        } else {
-             if (differenceInMinutes(new Date(), new Date(lastLog.timestamp)) > MAX_SHIFT_MINUTES) {
-                 setShowLongTurnWarning(true);
-                 return;
-             }
-             
-             // TODO: Migrar la lógica de addLog al nuevo servicio de API
-             // await apiService.addLog(employeeId, 'SALIDA', undefined, 'Automático');
-             console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, type: 'SALIDA' });
-             await reloadShifts();
-             const employee = employees.find(e => e.id === employeeId);
-             toast({
-                title: "Éxito (Simulado)",
-                description: `SALIDA registrada para ${employee?.name}`,
-            });
+      const companyId = employees[0]?.companyId;
+      if (!companyId) {
+        toast.error("No se pudo determinar la compañía.");
+        return;
+      }
+
+      const employee = employees.find(emp => emp.id === employeeId);
+      if (!employee) {
+        toast.error("Empleado no encontrado.");
+        return;
+      }
+
+      console.log("handleClockAction: openShifts antes de la acción:", openShifts);
+
+      if (currentStatus === 'in') { // User wants to clock IN (this is the 'Entrar' button)
+        console.log("handleClockAction: Intentando fichar ENTRADA.");
+        const isOpenShift = openShifts.some(shift => shift.employeeId === employeeId);
+        if (isOpenShift) {
+          toast.error("El empleado ya tiene un turno abierto. No se puede registrar una nueva entrada.");
+          return; // No permitir doble entrada
         }
-        return;
-      }
-      
-      if (type === 'ENTRADA' && lastLog && lastLog.type === 'ENTRADA') {
-        toast({
-          title: "Error", 
-          description: "Ya hay una entrada abierta para este empleado",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      if (type === 'ENTRADA' && lastLog && lastLog.type === 'SALIDA') {
-          const minutesSinceLastClockOut = differenceInMinutes(new Date(), new Date(lastLog.timestamp));
-          if (minutesSinceLastClockOut < FAST_CLOCK_IN_THRESHOLD_MINUTES) { 
-              setLastClockOutTime(format(new Date(lastLog.timestamp), 'p'));
-              setPendingClockInData({ employeeId, type });
-              setShowClockInWarning(true);
-              return;
+
+        const filteredProcessedShifts = processedShifts
+          .filter(shift => shift.employeeId === employeeId && shift.exitTimestamp); // Use shift.exitTimestamp directly
+
+        const lastClosedShift = filteredProcessedShifts
+          .sort((a, b) => new Date(b.exitTimestamp!).getTime() - new Date(a.exitTimestamp!).getTime())[0];
+
+        if (lastClosedShift) {
+          const timeSinceLastExit = differenceInMinutes(new Date(), new Date(lastClosedShift.exitTimestamp!));
+          if (timeSinceLastExit < MIN_TIME_BETWEEN_SHIFTS_MINUTES) {
+            setWarningDetails({
+              employeeId,
+              action: 're-entry',
+              message: `El empleado ${employee.full_name} acaba de fichar salida hace menos de ${MIN_TIME_BETWEEN_SHIFTS_MINUTES} minutos. ¿Está seguro de que quiere iniciar un nuevo turno tan pronto?`,
+              title: 'Entrada Rápida Detectada',
+            });
+            setShowWarningDialog(true);
+            return;
           }
+        }
+      } else if (currentStatus === 'out') { // User wants to clock OUT (this is the 'Salir' button)
+        console.log("handleClockAction: Intentando fichar SALIDA.");
+        const shiftToClose = openShifts.find(shift => shift.employeeId === employeeId);
+
+        if (!shiftToClose) {
+          // If trying to clock out without an open shift, offer manual correction
+          setAnomalousShift({
+            id: `manual-${employeeId}-${new Date().toISOString()}`,
+            employeeId: employeeId,
+            employeeName: employee.full_name,
+            entryTimestamp: new Date().toISOString(), // Simulate an entry now
+            isAnomalous: true, // It's anomalous because there was no real entry
+            entryRow: 0, // No real row
+          });
+          setShowManualExitDialog(true);
+          return;
+        }
+
+        // Validar duración del turno antes de la salida
+        const entryDate = new Date(shiftToClose.entryTimestamp);
+        const now = new Date();
+        const durationMinutes = differenceInMinutes(now, entryDate);
+
+        if (durationMinutes > MAX_SHIFT_MINUTES) {
+          // Turno demasiado largo, requiere corrección manual
+          setAnomalousShift({
+            id: shiftToClose.id, // Usar el ID real del turno abierto
+            employeeId: employeeId,
+            employeeName: employee.full_name,
+            entryTimestamp: shiftToClose.entryTimestamp,
+            isAnomalous: true,
+            entryRow: 0, // No real row
+          });
+          setShowManualExitDialog(true);
+          return;
+        }
+
+        // Si la salida es muy rápida después de la entrada
+        if (durationMinutes < 1) { // Menos de 1 minuto
+          setWarningDetails({
+            employeeId,
+            action: 'in', // Action to perform if confirmed: clock out
+            message: `El empleado ${employee.full_name} acaba de fichar entrada. ¿Está seguro de que quiere fichar salida tan pronto?`,
+            title: 'Salida Rápida Detectada',
+          });
+          setShowWarningDialog(true);
+          return;
+        }
       }
-      
-      // TODO: Migrar la lógica de addLog al nuevo servicio de API
-      // await apiService.addLog(employeeId, type, undefined, 'Automático');
-      console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, type });
-      await reloadShifts();
-      
-      const employee = employees.find(e => e.id === employeeId);
-      toast({
-        title: "Éxito (Simulado)",
-        description: `${type} registrada para ${employee?.name}`,
-      });
+
+      // If no specific frontend validation triggered, proceed with backend clockInOut
+      const result = await clockInOut(employeeId, companyId);
+      toast.success(result.message);
+
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo registrar la acción",
-        variant: "destructive"
-      });
+      const err = error as Error;
+      console.error("Clock action failed:", error);
+      toast.error(err.message || "No se pudo registrar la acción.");
     } finally {
-        setIsActionLoading(false);
+      setIsActionLoading(false);
+      reloadEmployees();
+      reloadShifts();
     }
   };
 
-  const handleManualClockInSubmit = async () => {
-    if (!employeeForManualClockIn || !manualClockInTime) {
-      toast({
-        title: "Error",
-        description: "Por favor, selecciona una fecha y hora de entrada",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsActionLoading(true);
-    try {
-      setShowManualClockIn(false);
-      
-      // TODO: Migrar la lógica de addLog al nuevo servicio de API
-      // await apiService.addLog(employeeForManualClockIn, 'ENTRADA', manualClockInTime.toISOString(), 'Manual');
-      // await apiService.addLog(employeeForManualClockIn, 'SALIDA', new Date().toISOString(), 'Automático');
-      console.log("Lógica de 'addLog' pendiente de migración.", { employeeForManualClockIn, manualClockInTime });
-      
-      await reloadShifts();
-      await reloadEmployees();
-      const employee = employees.find(e => e.id === employeeForManualClockIn);
-      toast({
-        title: "Éxito (Simulado)",
-        description: `Entrada manual y salida registrada para ${employee?.name}`,
-      });
-    } catch (error) {
-        toast({
-            title: "Error",
-            description: "No se pudo registrar la entrada manual",
-            variant: "destructive"
-        });
-    } finally {
-        setEmployeeForManualClockIn(null);
-        setManualClockInTime(undefined);
+  const handleWarningConfirm = async () => {
+    if (warningDetails) {
+      setIsActionLoading(true);
+      try {
+        const companyId = employees[0]?.companyId;
+        if (!companyId) {
+          toast.error("No se pudo determinar la compañía.");
+          return;
+        }
+        await clockInOut(warningDetails.employeeId, companyId);
+        toast.success(`Acción de ${employees.find(emp => emp.id === warningDetails.employeeId)?.full_name} registrada.`);
+      } catch (error) {
+        const err = error as Error;
+        toast.error(err.message || "No se pudo registrar la acción.");
+      } finally {
         setIsActionLoading(false);
+        setShowWarningDialog(false);
+        setWarningDetails(null);
+        reloadEmployees();
+        reloadShifts();
+      }
     }
+  };
+
+  const handleManualExitComplete = () => {
+    setShowManualExitDialog(false);
+    setAnomalousShift(null);
+    reloadEmployees();
+    reloadShifts();
   };
 
   if (overallLoading && employees.length === 0 && !isAdmin) {
@@ -209,73 +215,37 @@ const AppLayout: React.FC = () => {
             <EmployeeClockIn
               employees={employees}
               onClockAction={handleClockAction}
-              loading={overallLoading}
             />
             <WeeklyDashboard employees={employees} logs={logs} />
           </>
         )}
       </div>
-      
-      <Dialog open={showManualClockIn} onOpenChange={setShowManualClockIn}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Entrada Manual Olvidada</DialogTitle>
-             <DialogDescription>
-                No se encontró una entrada abierta. Se ha pre-calculado una hora de entrada 8 horas antes de este momento. Ajústala si es necesario.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <DateTimePicker date={manualClockInTime} setDate={setManualClockInTime} />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowManualClockIn(false)}>Cancelar</Button>
-            <Button onClick={handleManualClockInSubmit}>Registrar Entrada y Salida</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={showClockInWarning} onOpenChange={setShowClockInWarning}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Nueva Entrada</DialogTitle>
-             <DialogDescription>
-                Acabas de registrar una salida a las {lastClockOutTime}. ¿Estás seguro de que quieres iniciar un nuevo turno tan pronto?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClockInWarning(false)}>Cancelar</Button>
-            <Button onClick={handleClockInWarningConfirm}>Sí, registrar entrada</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <AlertDialog open={showTurnCompletedWarning} onOpenChange={setShowTurnCompletedWarning}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>Turno ya completado</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      Ya has registrado una salida para tu turno actual. No puedes registrar otra salida sin antes haber registrado una nueva entrada. Si crees que esto es un error, por favor, contacta al administrador.
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                  <AlertDialogAction onClick={() => setShowTurnCompletedWarning(false)}>Entendido</AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
+
+      {/* Diálogo de Advertencia */}
+      <AlertDialog open={showWarningDialog} onOpenChange={setShowWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{warningDetails?.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {warningDetails?.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowWarningDialog(false)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleWarningConfirm}>Continuar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
-      
-      <AlertDialog open={showLongTurnWarning} onOpenChange={setShowLongTurnWarning}>
-          <AlertDialogContent>
-              <AlertDialogHeader>
-                  <AlertDialogTitle>Turno Excesivamente Largo</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      El sistema ha detectado que tu turno abierto ha superado las {MAX_SHIFT_HOURS} horas. No se puede registrar la salida automáticamente. Por favor, contacta a un administrador para revisar y corregir tu registro.
-                  </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                  <AlertDialogAction onClick={() => setShowLongTurnWarning(false)}>Entendido</AlertDialogAction>
-              </AlertDialogFooter>
-          </AlertDialogContent>
-      </AlertDialog>
+
+      {/* Diálogo de Corrección Manual */}
+      {showManualExitDialog && anomalousShift && (
+        <ManualExitDialog
+          isOpen={showManualExitDialog}
+          onClose={() => setShowManualExitDialog(false)}
+          shift={anomalousShift}
+          onCorrectionComplete={handleManualExitComplete}
+        />
+      )}
     </div>
   );
 };

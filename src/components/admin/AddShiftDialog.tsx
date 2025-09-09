@@ -3,36 +3,46 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/ui/DateTimePicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from '@/hooks/use-toast';
+import { useShifts } from '@/contexts/ShiftsContext'; // <-- 1. IMPORTAR useShifts
+import { toast } from 'sonner';
 import { isAfter } from 'date-fns';
-// import { apiService } from '@/services/api';
 import { type Employee } from '@/types';
 
 interface AddShiftDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onShiftAdded: () => void;
   employees: Employee[];
 }
 
-const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, onShiftAdded, employees }) => {
-  const [employeeId, setEmployeeId] = useState<string | undefined>();
-  const [entryTime, setEntryTime] = useState<Date | undefined>(new Date());
-  const [exitTime, setExitTime] = useState<Date | undefined>(new Date());
+const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, employees }) => {
+  const [employeeId, setEmployeeId] = useState<string>('');
+  const [start_time, setStartTime] = useState<Date | undefined>(new Date());
+  const [end_time, setEndTime] = useState<Date | undefined>(new Date());
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const { addShift } = useShifts(); // <-- 2. OBTENER LA FUNCIÓN addShift
 
   const handleSubmit = async () => {
-    // TODO: Migrar la lógica de addLog al nuevo servicio de API
-    // apiService.addLog({ ... });
-    // apiService.addLog({ ... });
+    if (!employeeId || !start_time || !end_time) {
+      toast.error('Por favor, completa todos los campos.');
+      return;
+    }
 
-    console.log("Lógica de 'addLog' pendiente de migración.", { employeeId, entryTime, exitTime });
-    toast({
-      title: 'Función en desarrollo',
-      description: 'El guardado del turno manual será implementado con la nueva API.',
-    });
-    onClose();
+    if (isAfter(start_time, end_time)) {
+      toast.error('La fecha de entrada no puede ser posterior a la de salida.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 3. LLAMAR A LA FUNCIÓN DEL CONTEXTO
+      await addShift({ employeeId, start_time, end_time });
+      onClose(); // Cierra el diálogo solo si tiene éxito
+    } catch (error) {
+      // El error ya se muestra a través del toast en el contexto
+      console.error("Failed to add manual shift:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -53,18 +63,19 @@ const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, onShif
                 </SelectTrigger>
                 <SelectContent>
                     {employees.map(emp => (
-                        <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                        // 4. BUG CORREGIDO: emp.name -> emp.full_name
+                        <SelectItem key={emp.id} value={emp.id}>{emp.full_name}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-2">
             <label className="font-medium">Fecha y Hora de Entrada</label>
-            <DateTimePicker date={entryTime} setDate={setEntryTime} />
+            <DateTimePicker date={start_time} setDate={setStartTime} />
           </div>
           <div className="flex flex-col gap-2">
             <label className="font-medium">Fecha y Hora de Salida</label>
-            <DateTimePicker date={exitTime} setDate={setExitTime} />
+            <DateTimePicker date={end_time} setDate={setEndTime} />
           </div>
         </div>
         <DialogFooter>

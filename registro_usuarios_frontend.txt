@@ -1,0 +1,100 @@
+
+(async () => {
+  // --- Configuración ---
+  // ID de la compañía, asegúrate de que sea el correcto para tu entorno.
+  const COMPANY_ID = "4602c088-2129-4f2a-b1c7-694f2bd1ddbd";
+  
+  // URL base de tu API. Ajústala si es diferente.
+  const API_URL = "http://localhost:3001/api/v1/employees";
+
+  // --- Lista de Usuarios a Registrar ---
+  // Formato: [código_de_empleado, nombre_completo, tarifa_por_hora]
+  const usersToRegister = [
+    ["737", "Mario", 15],
+    ["690", "Gerardo", 15],
+    ["2003", "Heidy", 15],
+    ["13", "Joselin", 15],
+    ["2006", "Andrea", 15],
+    ["21", "Silvana", 15],
+    ["2010", "Neyda", 15],
+    ["1014", "Juliza", 15],
+    ["146", "Jenn", 15],
+    ["050", "Rafael", 15],
+    ["005", "EmpleadoPRUEBA", 0.5]
+  ];
+
+  // --- Funciones de Ayuda ---
+
+  /**
+   * Genera una cadena de texto aleatoria para usar en correos y contraseñas.
+   * @param {number} length La longitud de la cadena a generar.
+   * @returns {string} La cadena aleatoria.
+   */
+  const generateRandomString = (length) => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  /**
+   * Registra un único usuario enviando los datos a la API.
+   * @param {Array<string|number>} userData Los datos del usuario a registrar.
+   */
+  const registerUser = async (userData) => {
+    const [employee_code, fullName, hourlyRate] = userData;
+
+    // Genera un correo y contraseña aleatorios
+    const randomSuffix = generateRandomString(5);
+    const email = `${fullName.toLowerCase().replace(/\s/g, '_')}_${randomSuffix}@example.com`;
+    const password = generateRandomString(12);
+
+    console.log(`%cRegistrando a: ${fullName} (Código: ${employee_code})`, 'color: #007bff; font-weight: bold;');
+    console.log(`  - Email: ${email}`);
+    console.log(`  - Contraseña: ${password}`);
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyId: COMPANY_ID,
+          employee_code,
+          fullName,
+          email,
+          password,
+          hourlyRate,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log(`%c  - ✅ ÉXITO: Usuario '${fullName}' creado.`, 'color: #28a745;');
+        console.log('  - Respuesta del servidor:', result);
+      } else {
+        console.error(`%c  - ❌ ERROR al crear a '${fullName}' (Status: ${response.status}).`, 'color: #dc3545;');
+        console.error('  - Respuesta del servidor:', result);
+      }
+    } catch (error) {
+      console.error(`%c  - 🚨 FALLO EN LA RED al intentar registrar a '${fullName}'.`, 'color: #ffc107;');
+      console.error('  - Causa:', error.message);
+    }
+    console.log('-------------------------------------');
+  };
+
+  // --- Ejecución del Proceso ---
+  console.log(`%cIniciando el registro de ${usersToRegister.length} usuarios...`, 'font-size: 1.2em; font-weight: bold; color: #17a2b8;');
+  
+  for (const user of usersToRegister) {
+    await registerUser(user);
+    // Pequeña pausa para no saturar el servidor con solicitudes simultáneas
+    await new Promise(resolve => setTimeout(resolve, 250)); 
+  }
+  
+  console.log('%cProceso de registro finalizado.', 'font-size: 1.2em; font-weight: bold; color: #17a2b8;');
+})();

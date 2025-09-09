@@ -1,3 +1,4 @@
 export const MAX_SHIFT_HOURS = 18;
 export const MAX_SHIFT_MINUTES = MAX_SHIFT_HOURS * 60;
 export const FAST_CLOCK_IN_THRESHOLD_MINUTES = 5;
+export const MIN_TIME_BETWEEN_SHIFTS_MINUTES = 5;
