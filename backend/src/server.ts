@@ -9,7 +9,16 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
 // Middlewares
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173', // URL de desarrollo local de Vite
+  'https://control-de-horas-frontend-three.vercel.app' // URL de producción de Vercel
+];
+
+const corsOptions = {
+  origin: allowedOrigins
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Rutas de la API
