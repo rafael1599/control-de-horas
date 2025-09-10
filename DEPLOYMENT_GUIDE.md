@@ -118,6 +118,29 @@ Las siguientes variables de entorno deben configurarse en los servicios de despl
         *   `COMPANY_ID`: Pega el ID de la compañía para producción.
     6.  **Desplegar:** Render detectará automáticamente los cambios en tu rama principal y desplegará el servicio. Anota la URL pública que Render te asigne, ya que la necesitarás para el frontend.
 
+---
+### 2.5. Paso Crítico Post-Despliegue: Sembrar la Base de Datos
+
+Después del primer despliegue exitoso del backend, la base de datos de producción tendrá las tablas creadas (`User`, `Company`, etc.), pero estarán vacías. La aplicación requiere que exista al menos un registro de `Company` para poder crear nuevos usuarios y empleados.
+
+Para solucionar esto, hemos creado un endpoint temporal que se debe llamar **una sola vez** para inicializar la compañía principal.
+
+**Acción:**
+Con el backend ya desplegado, abre una terminal y ejecuta el siguiente comando `curl`:
+```bash
+curl -X POST https://control-de-horas-backend.onrender.com/api/v1/setup/initialize
+```
+
+**Resultado Esperado:**
+Deberías recibir una respuesta JSON confirmando que la compañía fue creada exitosamente, similar a esta:
+```json
+{"message":"Compañía inicializada exitosamente.","company":{"id":"...","company_name":"Compañía Principal", ...}}
+```
+Una vez que recibas esta respuesta, la base de datos estará lista y la aplicación funcionará correctamente.
+
+**Nota de Seguridad:** Este endpoint de `/setup` es temporal y debería ser eliminado en un futuro commit para no dejar expuesta una ruta de configuración.
+---
+
 ### Componente: Frontend (React App)
 
 *   **Servicio Recomendado:** Vercel.

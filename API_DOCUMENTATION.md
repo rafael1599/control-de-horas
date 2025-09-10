@@ -218,3 +218,23 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
 *   **Parámetros de URL:**
     *   `id` (string, obligatorio): El ID del fichaje a eliminar.
 *   **Respuesta Exitosa (204 No Content):** No devuelve contenido.
+
+---
+## Módulo: Configuración (`/setup`) - Temporal
+
+Endpoints para la configuración inicial del sistema. **Estos endpoints deben ser eliminados después del primer despliegue.**
+
+* **Prefijo de Ruta:** `/api/v1/setup`
+
+### 1. Inicializar Compañía Principal
+
+* **Endpoint:** `POST /initialize`
+* **Descripción:** Crea el primer registro de `Company` en la base de datos utilizando el `COMPANY_ID` de las variables de entorno. Este endpoint está diseñado para ser llamado una sola vez. Si la compañía ya existe, simplemente devolverá un mensaje indicándolo.
+* **Cuerpo de la Solicitud:** Vacío.
+* **Respuesta Exitosa (201 Created):**
+    ```json
+    {
+      "message": "Compañía inicializada exitosamente.",
+      "company": { ... }
+    }
+    ```
