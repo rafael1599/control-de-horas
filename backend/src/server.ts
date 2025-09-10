@@ -3,7 +3,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import employeeRoutes from './routes/employee.routes';
 import timeEntryRoutes from './routes/timeEntry.routes'; // <-- NUEVA IMPORTACIÓN
-import setupRoutes from './routes/setup.routes.ts';
+import setupRoutes from './routes/setup.routes';
 
 const app = express();
 const prisma = new PrismaClient();

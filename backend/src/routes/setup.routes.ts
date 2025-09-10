@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { initializeCompany } from '../controllers/setup.controller.ts';
+import { initializeCompany } from '../controllers/setup.controller';
 
 const router = Router();
 

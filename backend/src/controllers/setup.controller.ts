@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
-import prisma from '../prisma-client';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export const initializeCompany = async (req: Request, res: Response) => {
   const companyId = process.env.COMPANY_ID;
