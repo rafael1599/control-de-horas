@@ -35,7 +35,11 @@ export const createEmployee = async (employeeData: { full_name: string; email: s
         email,
         password_hash,
         role: 'EMPLOYEE',
-        companyId,
+        company: {
+          connect: {
+            id: companyId,
+          },
+        },
       },
     });
 

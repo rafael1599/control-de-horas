@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3001;
 // Middlewares
 const allowedOrigins = [
   'http://localhost:5173', // URL de desarrollo local de Vite
+  'http://localhost:8080',
   'https://control-de-horas-frontend-three.vercel.app' // URL de producción de Vercel
 ];
 
