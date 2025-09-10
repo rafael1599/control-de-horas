@@ -54,10 +54,10 @@ Gestión CRUD de los empleados de una compañía.
 *   **Cuerpo de la Solicitud (Request Body):**
     ```json
     {
-      "fullName": "Ana López",
+      "full_name": "Ana López",
       "email": "ana.lopez@miempresa.com",
       "password": "password_inicial_para_ana",
-      "hourlyRate": 18.50,
+      "hourly_rate": 18.50,
       "companyId": "uuid-de-la-compañia"
     }
     ```

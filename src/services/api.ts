@@ -11,14 +11,14 @@ export const getEmployeesByCompany = async (companyId: string): Promise<Employee
   return response.json();
 };
 
-export const createEmployee = async (employeeData: EmployeeCreationData, companyId: string): Promise<Employee> => {
+export const createEmployee = async (employeeData: EmployeeCreationData): Promise<Employee> => {
   const response = await fetch(`${API_URL}/employees`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...employeeData, companyId }),
+      body: JSON.stringify(employeeData),
     },
   );
 
@@ -146,3 +146,28 @@ export const updateShift = async (shiftId: string, shiftData: { start_time?: Dat
 
   return response.json();
 };
+
+// ====================================================================
+//  BLOQUE DE DEPURACIÓN: Exponer funciones a la consola del navegador
+//  ADVERTENCIA: Eliminar este bloque antes de desplegar a producción
+// ====================================================================
+if (import.meta.env.DEV) {
+  window.apiService = {
+    getEmployeesByCompany,
+    createEmployee,
+    updateEmployeeById,
+    deleteEmployeeById,
+    getTimeEntriesByCompany,
+    clockInOut,
+    createManualShift,
+    updateShift,
+    deleteShift
+  };
+}
+
+// Declaración para que TypeScript no se queje del objeto window
+declare global {
+  interface Window {
+    apiService: any;
+  }
+}

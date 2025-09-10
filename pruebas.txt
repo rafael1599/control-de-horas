@@ -1,0 +1,86 @@
+(async () => {
+  // --- PASO 0: Configuración ---
+  console.log("Iniciando script de pruebas para Fichajes (Time Entries)...");
+  const COMPANY_ID = "4602c088-2129-4f2a-b1c7-694f2bd1ddbd";
+  let testEmployeeId = null;
+  let testShiftId = null;
+
+  try {
+    const { 
+      getEmployeesByCompany,
+      getTimeEntriesByCompany,
+      createManualShift,
+      updateShift,
+      deleteShift
+    } = window.apiService;
+
+    // --- PASO 1: OBTENER UN EMPLEADO PARA LAS PRUEBAS ---
+    console.log("\n--- 1. OBTENIENDO EMPLEADO DE PRUEBA ---");
+    const employees = await getEmployeesByCompany(COMPANY_ID);
+    if (!employees || employees.length === 0) {
+      throw new Error("No se encontraron empleados para realizar la prueba de fichajes.");
+    }
+    testEmployeeId = employees[0].id;
+    console.log(`Se usará el empleado con ID: ${testEmployeeId}`);
+
+    // --- PASO 2: CREAR UN FICHAJE MANUAL (Create) ---
+    console.log("\n--- 2. CREANDO FICHAJE DE PRUEBA ---");
+    const startTime = new Date();
+    startTime.setHours(9, 0, 0, 0); // Hoy a las 09:00
+    const endTime = new Date();
+    endTime.setHours(17, 0, 0, 0); // Hoy a las 17:00
+
+    const newShiftData = {
+      employeeId: testEmployeeId,
+      companyId: COMPANY_ID,
+      start_time: startTime,
+      end_time: endTime
+    };
+    const createdShift = await createManualShift(newShiftData);
+    if (!createdShift || !createdShift.id) {
+      throw new Error("La creación del fichaje falló o no devolvió un ID.");
+    }
+    testShiftId = createdShift.id;
+    console.log("✅ Fichaje creado exitosamente:", createdShift);
+    console.log(`ID de fichaje para pruebas: ${testShiftId}`);
+
+    // --- PASO 3: ACTUALIZAR EL FICHAJE (Update) ---
+    console.log("\n--- 3. ACTUALIZANDO FICHAJE ---");
+    const updatedEndTime = new Date(endTime);
+    updatedEndTime.setHours(17, 30, 0, 0); // Se actualiza la hora de salida a las 17:30
+
+    const shiftUpdateData = {
+      end_time: updatedEndTime
+    };
+    const updatedShift = await updateShift(testShiftId, shiftUpdateData);
+    console.log("✅ Fichaje actualizado exitosamente:", updatedShift);
+    if (new Date(updatedShift.end_time).getMinutes() !== 30) {
+        throw new Error("La hora de salida no se actualizó correctamente.");
+    }
+    console.log("Verificación de actualización correcta.");
+
+
+    // --- PASO 4: ELIMINAR EL FICHAJE (Delete) ---
+    console.log("\n--- 4. ELIMINANDO FICHAJE ---");
+    await deleteShift(testShiftId);
+    console.log(`✅ Fichaje con ID ${testShiftId} eliminado exitosamente.`);
+
+    // --- PASO 5: VERIFICACIÓN FINAL ---
+    console.log("\n--- 5. VERIFICANDO LISTA FINAL DE FICHAJES ---");
+    const finalShifts = await getTimeEntriesByCompany(COMPANY_ID);
+    const foundDeleted = finalShifts.some(shift => shift.id === testShiftId);
+    console.log(`¿Todavía existe el fichaje? ${foundDeleted ? 'Sí, ¡ERROR!' : 'No'}`);
+    if (foundDeleted) {
+        throw new Error("El fichaje eliminado todavía se encuentra en la base de datos.");
+    }
+    
+    console.log("\n🎉 ¡Script de pruebas de fichajes completado exitosamente! 🎉");
+
+  } catch (error) {
+    console.error("❌ ERROR DURANTE LA EJECUCIÓN DEL SCRIPT DE PRUEBAS DE FICHAJES:", error);
+  } finally {
+    if (testShiftId) {
+      console.log(`El ID del fichaje de prueba fue: ${testShiftId}. Si el script falló, puede que necesites eliminarlo manualmente.`);
+    }
+  }
+})();

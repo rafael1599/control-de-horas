@@ -46,10 +46,7 @@ export const createManualTimeEntry = async (req: Request, res: Response) => {
       start_time: new Date(start_time),
       end_time: new Date(end_time),
     });
-    res.status(201).json({
-      message: "Turno manual creado exitosamente.",
-      timeEntry: newTimeEntry,
-    });
+    res.status(201).json(newTimeEntry);
   } catch (error) {
     console.error("Error creating manual time entry:", error);
     res.status(500).json({ error: "Ocurrió un error al crear el turno manual." });
@@ -92,10 +89,7 @@ export const updateTimeEntry = async (req: Request, res: Response) => {
 
     const updatedTimeEntry = await timeEntryService.updateShiftById(id, dataToUpdate);
 
-    res.status(200).json({
-      message: "Turno actualizado exitosamente.",
-      timeEntry: updatedTimeEntry,
-    });
+    res.status(200).json(updatedTimeEntry);
 
   } catch (error) {
     console.error("Error updating time entry:", error);

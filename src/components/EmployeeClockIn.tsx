@@ -12,7 +12,7 @@ interface EmployeeClockInProps {
 
 export const EmployeeClockIn: React.FC<EmployeeClockInProps> = ({ employees, onClockAction }) => {
   const { openShifts } = useShifts();
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>(undefined);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | undefined>('');
 
   const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
   const isClockedIn = selectedEmployee ? openShifts.some(shift => shift.employeeId === selectedEmployee.id) : false;

@@ -25,8 +25,8 @@ export const getAllEmployeesByCompany = async (companyId: string) => {
 };
 
 // Servicio para crear un nuevo empleado
-export const createEmployee = async (employeeData: { fullName: string; email: string; password: string; hourlyRate?: number; employee_code?: string }, companyId: string) => {
-  const { fullName, email, password, hourlyRate, employee_code } = employeeData;
+export const createEmployee = async (employeeData: { full_name: string; email: string; password: string; hourly_rate?: number; employee_code?: string }, companyId: string) => {
+  const { full_name, email, password, hourly_rate, employee_code } = employeeData;
   const password_hash = `hashed_${password}`; // TODO: Replace with bcrypt
 
   return await prisma.$transaction(async (tx) => {
@@ -41,9 +41,9 @@ export const createEmployee = async (employeeData: { fullName: string; email: st
 
     const newEmployeeProfile = await tx.employee.create({
       data: {
-        full_name: fullName,
+        full_name: full_name,
         employee_code: employee_code || null, // Asegurarse de que sea null si está vacío
-        hourly_rate: hourlyRate ? parseFloat(hourlyRate.toString()) : null,
+        hourly_rate: hourly_rate ? parseFloat(hourly_rate.toString()) : null,
         companyId,
         userId: newUser.id,
       },

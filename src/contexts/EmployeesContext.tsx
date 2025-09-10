@@ -30,7 +30,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [error, setError] = useState<string | null>(null);
 
   // ID de compañía hardcoded temporalmente. Ahora será accesible globalmente.
-  const companyId = '4602c088-2129-4f2a-b1c7-694f2bd1ddbd';
+  const companyId = import.meta.env.VITE_COMPANY_ID;
 
   const reloadEmployees = useCallback(async () => {
     if (!companyId) return;
