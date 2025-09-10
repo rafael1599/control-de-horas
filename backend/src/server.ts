@@ -3,6 +3,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import employeeRoutes from './routes/employee.routes';
 import timeEntryRoutes from './routes/timeEntry.routes'; // <-- NUEVA IMPORTACIÓN
+import setupRoutes from './routes/setup.routes.ts';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -25,6 +26,7 @@ app.use(express.json());
 // Rutas de la API
 app.use('/api/v1/employees', employeeRoutes);
 app.use('/api/v1/time-entries', timeEntryRoutes); // <-- NUEVO USO DEL ENRUTADOR
+app.use('/api/v1/setup', setupRoutes);
 
 // --- INICIO Y CIERRE DEL SERVIDOR ---
 
