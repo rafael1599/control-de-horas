@@ -147,27 +147,4 @@ export const updateShift = async (shiftId: string, shiftData: { start_time?: Dat
   return response.json();
 };
 
-// ====================================================================
-//  BLOQUE DE DEPURACIÓN: Exponer funciones a la consola del navegador
-//  ADVERTENCIA: Eliminar este bloque antes de desplegar a producción
-// ====================================================================
-if (import.meta.env.DEV) {
-  window.apiService = {
-    getEmployeesByCompany,
-    createEmployee,
-    updateEmployeeById,
-    deleteEmployeeById,
-    getTimeEntriesByCompany,
-    clockInOut,
-    createManualShift,
-    updateShift,
-    deleteShift
-  };
-}
 
-// Declaración para que TypeScript no se queje del objeto window
-declare global {
-  interface Window {
-    apiService: any;
-  }
-}
