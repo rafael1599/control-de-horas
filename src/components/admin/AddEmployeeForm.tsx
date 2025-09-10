@@ -23,10 +23,10 @@ import {
 // Esquema de validación con Zod actualizado
 const formSchema = z.object({
   employee_code: z.string().optional(),
-  fullName: z.string().min(3, { message: 'El nombre debe tener al menos 3 caracteres.' }),
+  full_name: z.string().min(3, { message: 'El nombre debe tener al menos 3 caracteres.' }),
   email: z.string().email({ message: 'Por favor, introduce un email válido.' }).optional().or(z.literal('')),
   password: z.string().min(6, { message: 'La contraseña debe tener al menos 6 caracteres.' }).optional().or(z.literal('')),
-  hourlyRate: z.coerce.number().min(0, { message: 'La tarifa debe ser un número positivo.' }).optional(),
+  hourly_rate: z.coerce.number().min(0, { message: 'La tarifa debe ser un número positivo.' }).optional(),
 });
 
 type EmployeeFormData = z.infer<typeof formSchema>;
@@ -48,10 +48,10 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
     resolver: zodResolver(formSchema),
     defaultValues: {
       employee_code: '',
-      fullName: '',
+      full_name: '',
       email: '',
       password: '',
-      hourlyRate: 15,
+      hourly_rate: 15,
     },
   });
 
@@ -59,17 +59,17 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
     console.log('AddEmployeeForm useEffect - employeeToEdit:', employeeToEdit);
     if (employeeToEdit) {
       form.setValue('employee_code', employeeToEdit.employee_code || '');
-      form.setValue('fullName', employeeToEdit.full_name || '');
-      form.setValue('hourlyRate', employeeToEdit.hourly_rate || 0);
+      form.setValue('full_name', employeeToEdit.full_name || '');
+      form.setValue('hourly_rate', employeeToEdit.hourly_rate || 0);
       form.setValue('email', employeeToEdit.email || '');
       form.setValue('password', ''); // Password should never be pre-populated for security
     } else {
       form.reset({
         employee_code: '',
-        fullName: '',
+        full_name: '',
         email: '',
         password: '',
-        hourlyRate: 15,
+        hourly_rate: 15,
       });
     }
   }, [employeeToEdit, form]);
@@ -79,10 +79,10 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
       // Update employee
       const updateData: Partial<Employee> = {
         code: values.employee_code || undefined,
-        name: values.fullName,
+        full_name: values.full_name,
         email: values.email || undefined,
         password: values.password || undefined,
-        hourlyRate: values.hourlyRate || undefined,
+        hourly_rate: values.hourly_rate || undefined,
       };
       await onUpdateEmployee(employeeToEdit.id, updateData);
       onCancelEdit();
@@ -93,13 +93,17 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
       if (!values.employee_code) missingFields.push('Código');
       if (!values.email) missingFields.push('Email');
       if (!values.password) missingFields.push('Contraseña');
-      if (!values.hourlyRate) missingFields.push('Tarifa/hora');
+      if (!values.hourly_rate) missingFields.push('Tarifa/hora');
 
       if (missingFields.length > 0) {
         setPendingSubmitValues(values);
         setShowWarningDialog(true);
       } else {
-        await onAddEmployee(values);
+        const submissionData = {
+          ...values,
+          companyId: import.meta.env.VITE_COMPANY_ID,
+        };
+        await onAddEmployee(submissionData);
         onCancelEdit();
         form.reset();
       }
@@ -108,7 +112,11 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
 
   const handleContinueSubmit = async () => {
     if (pendingSubmitValues) {
-      await onAddEmployee(pendingSubmitValues);
+      const submissionData = {
+        ...pendingSubmitValues,
+        companyId: import.meta.env.VITE_COMPANY_ID,
+      };
+      await onAddEmployee(submissionData);
       onCancelEdit();
       form.reset();
       setPendingSubmitValues(null);
@@ -139,7 +147,7 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
             />
             <FormField
               control={form.control}
-              name="fullName"
+              name="full_name"
               render={({ field }) => (
                 <FormItem className="col-span-1 lg:col-span-1">
                   <FormLabel>Nombre Completo</FormLabel>
@@ -178,7 +186,7 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
             />
             <FormField
               control={form.control}
-              name="hourlyRate"
+              name="hourly_rate"
               render={({ field }) => (
                 <FormItem className="col-span-1 lg:col-span-1">
                   <FormLabel>Tarifa/hora (Opcional)</FormLabel>

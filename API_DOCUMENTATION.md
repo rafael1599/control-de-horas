@@ -106,7 +106,7 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
     [
       {
         "id": "uuid-del-fichaje",
-        "employeeId": "uuid-del-empleado",
+        "employee_id": "uuid-del-empleado",
         "companyId": "uuid-de-la-compañia",
         "start_time": "2025-09-08T08:00:00.000Z",
         "end_time": "2025-09-08T17:00:00.000Z",
@@ -123,7 +123,7 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
 *   **Cuerpo de la Solicitud (Request Body):**
     ```json
     {
-      "employeeId": "uuid-del-empleado",
+      "employee_id": "uuid-del-empleado",
       "companyId": "uuid-de-la-compañia"
     }
     ```
@@ -131,9 +131,9 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
     ```json
     {
       "message": "Entrada registrada exitosamente.",
-      "timeEntry": {
+      "time_entry": {
         "id": "uuid-del-fichaje",
-        "employeeId": "uuid-del-empleado",
+        "employee_id": "uuid-del-empleado",
         "companyId": "uuid-de-la-compañia",
         "start_time": "2025-09-08T08:00:00.000Z",
         "end_time": null,
@@ -146,9 +146,9 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
     ```json
     {
       "message": "Salida registrada exitosamente.",
-      "timeEntry": {
+      "time_entry": {
         "id": "uuid-del-fichaje",
-        "employeeId": "uuid-del-empleado",
+        "employee_id": "uuid-del-empleado",
         "companyId": "uuid-de-la-compañia",
         "start_time": "2025-09-08T08:00:00.000Z",
         "end_time": "2025-09-08T17:00:00.000Z",
@@ -165,7 +165,7 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
 *   **Cuerpo de la Solicitud (Request Body):**
     ```json
     {
-      "employeeId": "uuid-del-empleado",
+      "employee_id": "uuid-del-empleado",
       "companyId": "uuid-de-la-compañia",
       "start_time": "2025-09-08T08:00:00.000Z",
       "end_time": "2025-09-08T17:00:00.000Z"
@@ -175,7 +175,7 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
     ```json
     {
       "id": "uuid-del-fichaje-manual",
-      "employeeId": "uuid-del-empleado",
+      "employee_id": "uuid-del-empleado",
       "companyId": "uuid-de-la-compañia",
       "start_time": "2025-09-08T08:00:00.000Z",
       "end_time": "2025-09-08T17:00:00.000Z",
@@ -202,7 +202,7 @@ Gestión de los registros de entrada y salida de los empleados (fichajes).
     ```json
     {
       "id": "uuid-del-fichaje",
-      "employeeId": "uuid-del-empleado",
+      "employee_id": "uuid-del-empleado",
       "companyId": "uuid-de-la-compañia",
       "start_time": "2025-09-08T08:15:00.000Z",
       "end_time": "2025-09-08T17:30:00.000Z",

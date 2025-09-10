@@ -16,10 +16,15 @@ export const getEmployees = async (req: Request, res: Response) => {
 // Controlador para crear un nuevo empleado
 export const createEmployee = async (req: Request, res: Response) => {
   try {
-    // Nota: Por ahora, el companyId viene en el body.
-    // En el futuro, vendrá del usuario autenticado.
-    const { companyId } = req.body; 
-    const newEmployee = await employeeService.createEmployee(req.body, companyId);
+    // Lógica corregida y definitiva:
+    const { companyId, ...employeeData } = req.body;
+
+    // Verificación para asegurar que companyId no sea undefined
+    if (!companyId) {
+      return res.status(400).json({ error: "companyId es requerido en el cuerpo de la petición." });
+    }
+
+    const newEmployee = await employeeService.createEmployee(employeeData, companyId);
     res.status(201).json(newEmployee);
   } catch (error) {
     console.error("Error creating employee:", error);
