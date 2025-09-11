@@ -238,3 +238,37 @@ Endpoints para la configuración inicial del sistema. **Estos endpoints deben se
       "company": { ... }
     }
     ```
+---
+Módulo: Registros de Tiempo (/time-entries)
+Endpoints para el fichaje y la gestión de los turnos.
+
+Autenticación Requerida: Sí (eventualmente).
+
+Prefijo de Ruta: /api/v1/time-entries
+
+1. Fichar Entrada / Salida (Clock In / Out)
+Endpoint: POST /clock
+
+Descripción: Registra un evento de fichaje. El backend determina automáticamente si es una entrada o una salida basándose en el último registro del empleado.
+
+Cuerpo de la Solicitud (Request Body):
+
+JSON
+
+{
+  "employeeId": "uuid-del-empleado",
+  "companyId": "uuid-de-la-compañia"
+}
+Respuesta Exitosa (201 Created):
+
+JSON
+
+{
+  "message": "Registro de [entrada/salida] exitoso.",
+  "timeEntry": {
+    "id": "uuid-del-turno",
+    "start_time": "...",
+    "end_time": "...",
+    // ...otros campos del turno
+  }
+}

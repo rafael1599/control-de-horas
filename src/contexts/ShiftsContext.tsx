@@ -100,6 +100,23 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (companyId) reloadShifts();
   }, [reloadShifts, companyId]);
 
+  // NUEVO: useEffect para el polling
+  useEffect(() => {
+    const POLLING_INTERVAL = 7 * 60 * 1000; // 7 minutos
+
+    console.log("ShiftsContext: Configurando polling cada 7 minutos.");
+    const intervalId = setInterval(() => {
+      console.log("ShiftsContext: Ejecutando reloadShifts desde el polling.");
+      reloadShifts();
+    }, POLLING_INTERVAL);
+
+    // Función de limpieza para detener el intervalo cuando el componente se desmonte
+    return () => {
+      console.log("ShiftsContext: Limpiando intervalo de polling.");
+      clearInterval(intervalId);
+    };
+  }, [reloadShifts]); // El array de dependencias asegura que se use la última versión de reloadShifts
+
   const openShifts = useMemo((): OpenShift[] => {
     const openShiftsMap = new Map<string, Date>();
 
