@@ -54,7 +54,7 @@ const AppLayout: React.FC = () => {
 
       const employee = employees.find(emp => emp.id === employeeId);
       if (!employee) {
-        toast.error("Empleado no encontrado.");
+        toast.error("Miembro no encontrado.");
         return;
       }
 
@@ -64,7 +64,7 @@ const AppLayout: React.FC = () => {
         console.log("handleClockAction: Intentando fichar ENTRADA.");
         const isOpenShift = openShifts.some(shift => shift.employeeId === employeeId);
         if (isOpenShift) {
-          toast.error("El empleado ya tiene un turno abierto. No se puede registrar una nueva entrada.");
+          toast.error("El miembro ya tiene una actividad abierta. No se puede registrar una nueva entrada.");
           return; // No permitir doble entrada
         }
 
@@ -80,7 +80,7 @@ const AppLayout: React.FC = () => {
             setWarningDetails({
               employeeId,
               action: 're-entry',
-              message: `El empleado ${employee.full_name} acaba de fichar salida hace menos de ${MIN_TIME_BETWEEN_SHIFTS_MINUTES} minutos. ¿Está seguro de que quiere iniciar un nuevo turno tan pronto?`,
+              message: `El miembro ${employee.full_name} acaba de fichar salida hace menos de ${MIN_TIME_BETWEEN_SHIFTS_MINUTES} minutos. ¿Está seguro de que quiere iniciar una nueva actividad tan pronto?`,
               title: 'Entrada Rápida Detectada',
             });
             setShowWarningDialog(true);
@@ -112,7 +112,7 @@ const AppLayout: React.FC = () => {
 
         if (durationMinutes > MAX_SHIFT_MINUTES) {
           // Turno demasiado largo, mostrar advertencia no bloqueante
-          toast.warning(`El turno ha superado las ${MAX_SHIFT_HOURS} horas. Se ha registrado la salida, pero este turno será marcado para revisión.`);
+          toast.warning(`La actividad ha superado las ${MAX_SHIFT_HOURS} horas. Se ha registrado la salida, pero esta actividad será marcada para revisión.`);
         }
 
         // Si la salida es muy rápida después de la entrada
@@ -120,7 +120,7 @@ const AppLayout: React.FC = () => {
           setWarningDetails({
             employeeId,
             action: 'in', // Action to perform if confirmed: clock out
-            message: `El empleado ${employee.full_name} acaba de fichar entrada. ¿Está seguro de que quiere fichar salida tan pronto?`,
+            message: `El miembro ${employee.full_name} acaba de fichar entrada. ¿Está seguro de que quiere fichar salida tan pronto?`,
             title: 'Salida Rápida Detectada',
           });
           setShowWarningDialog(true);
@@ -198,7 +198,7 @@ const AppLayout: React.FC = () => {
 
       <AdminLogin />
 
-      <div className="container mx-auto p-4 space-y-6">
+      <div className="container mx-auto px-2 py-4 sm:px-4 space-y-6">
         {isAdmin ? (
           <AdminPanel onBack={logout} />
         ) : (
@@ -207,7 +207,6 @@ const AppLayout: React.FC = () => {
               employees={employees}
               onClockAction={handleClockAction}
             />
-            <WeeklyDashboard employees={employees} logs={logs} />
           </>
         )}
       </div>

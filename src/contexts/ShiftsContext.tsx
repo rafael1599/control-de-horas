@@ -89,7 +89,7 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch (err) {
       setError('Failed to fetch shifts');
       console.error("ShiftsContext: Error en reloadShifts:", err);
-      toast.error('Error al cargar los turnos.');
+      toast.error('Error al cargar la actividad.');
     } finally {
       setLoading(false);
       console.log("ShiftsContext: reloadShifts finalizado.");
@@ -206,12 +206,12 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     try {
       await createManualShift({ ...shiftData, companyId });
-      toast.success('Turno manual agregado exitosamente');
+      toast.success('Actividad manual añadida exitosamente');
       await reloadShifts();
     } catch (err) {
       console.error(err);
-      const errorMessage = (err as Error).message || 'No se pudo agregar el turno.';
-      toast.error('Error al agregar el turno', { description: errorMessage });
+      const errorMessage = (err as Error).message || 'No se pudo añadir la actividad.';
+      toast.error('Error al añadir actividad', { description: errorMessage });
       throw err;
     }
   };
@@ -219,24 +219,24 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const updateShift = async (shiftId: string, shiftData: { start_time?: Date; end_time?: Date }) => {
     try {
       await apiUpdateShift(shiftId, shiftData);
-      toast.success('Turno actualizado exitosamente');
+      toast.success('Actividad actualizada exitosamente');
       await reloadShifts();
     } catch (err) {
       console.error(err);
-      const errorMessage = (err as Error).message || 'No se pudo actualizar el turno.';
-      toast.error('Error al actualizar el turno', { description: errorMessage });
+      const errorMessage = (err as Error).message || 'No se pudo actualizar la actividad.';
+      toast.error('Error al actualizar la actividad', { description: errorMessage });
       throw err;
     }
   };
   const deleteShift = async (shiftId: string) => {
     try {
       await apiDeleteShift(shiftId); // Assuming you rename the import
-      toast.success('Turno eliminado exitosamente');
+      toast.success('Actividad eliminada exitosamente');
       await reloadShifts();
     } catch (err) {
       console.error(err);
-      const errorMessage = (err as Error).message || 'No se pudo eliminar el turno.';
-      toast.error('Error al eliminar el turno', { description: errorMessage });
+      const errorMessage = (err as Error).message || 'No se pudo eliminar la actividad.';
+      toast.error('Error al eliminar la actividad', { description: errorMessage });
       throw err;
     }
   };

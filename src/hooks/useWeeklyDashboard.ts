@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import { startOfWeek, endOfWeek, addWeeks, format, set } from 'date-fns';
+import { startOfWeek, endOfWeek, addWeeks, format, set, differenceInHours } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { type Employee, type TimeLog } from '@/types';
+import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
 
@@ -12,10 +12,7 @@ const getCustomWeekStart = (date: Date): Date => {
   return start;
 };
 
-export const useWeeklyDashboard = () => {
-  const { employees } = useEmployees();
-  const { shifts: logs, openShifts } = useShifts(); // Get openShifts from context
-
+export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const goToPreviousWeek = () => setWeekOffset(prev => prev - 1);
@@ -43,43 +40,80 @@ export const useWeeklyDashboard = () => {
     });
 
     const employeeMap = new Map(employees.map(e => [e.id, e]));
-    const employeeHours: Record<string, { hours: number; employee: Employee; estimatedPayment: number }> = {};
-    const currentOpenShifts = new Map<string, Date>();
+    const openShifts = new Map<string, TimeLog>();
+    const shiftsInWeek: ProcessedShift[] = [];
 
     const sortedLogs = filteredLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     sortedLogs.forEach(log => {
-      const employee = employeeMap.get(log.employeeId);
-      if (!employee) return;
-
       if (log.type === 'ENTRADA') {
-        currentOpenShifts.set(log.employeeId, new Date(log.timestamp));
+        // Handle cases of multiple entries without exit
+        if (openShifts.has(log.employeeId)) {
+            // This is an anomalous situation, the previous shift is orphaned.
+        }
+        openShifts.set(log.employeeId, log);
       } else if (log.type === 'SALIDA') {
-        if (currentOpenShifts.has(log.employeeId)) {
-          const entryTime = currentOpenShifts.get(log.employeeId)!;
-          const exitTime = new Date(log.timestamp);
-          const hours = (exitTime.getTime() - entryTime.getTime()) / (1000 * 60 * 60);
-          
-          if (!employeeHours[log.employeeId]) {
-            employeeHours[log.employeeId] = { hours: 0, employee, estimatedPayment: 0 }; // Initialize estimatedPayment
-          }
-          employeeHours[log.employeeId].hours += hours;
-          employeeHours[log.employeeId].estimatedPayment = employeeHours[log.employeeId].hours * (employee.hourly_rate || 0); // Calculate estimatedPayment
-          currentOpenShifts.delete(log.employeeId);
+        if (openShifts.has(log.employeeId)) {
+          const openShift = openShifts.get(log.employeeId)!;
+          shiftsInWeek.push({
+            id: openShift.shiftId!,
+            employeeId: openShift.employeeId,
+            employeeName: employeeMap.get(openShift.employeeId)?.full_name || openShift.employeeId,
+            entryTimestamp: openShift.timestamp,
+            exitTimestamp: log.timestamp,
+            duration: differenceInHours(new Date(log.timestamp), new Date(openShift.timestamp)),
+            entryRow: openShift.row,
+            exitRow: log.row,
+          });
+          openShifts.delete(log.employeeId);
         }
       }
     });
 
-    return Object.values(employeeHours).sort((a, b) => b.hours - a.hours);
+    const employeeSummary: Record<string, {
+      hours: number;
+      employee: Employee;
+      hasAnomalousShift: boolean;
+      shifts: ProcessedShift[];
+    }> = {};
+
+    shiftsInWeek.forEach(shift => {
+        const employee = employeeMap.get(shift.employeeId);
+        if (!employee) return;
+
+        if (!employeeSummary[shift.employeeId]) {
+            employeeSummary[shift.employeeId] = { hours: 0, employee, hasAnomalousShift: false, shifts: [] };
+        }
+
+        const duration = shift.duration || 0;
+        employeeSummary[shift.employeeId].hours += duration;
+        employeeSummary[shift.employeeId].shifts.push(shift);
+
+        if (duration > 18) {
+            employeeSummary[shift.employeeId].hasAnomalousShift = true;
+        }
+    });
+    
+    // Sort shifts within each summary for chronological display
+    Object.values(employeeSummary).forEach(summary => {
+      summary.shifts.sort((a, b) => new Date(a.entryTimestamp).getTime() - new Date(b.entryTimestamp).getTime());
+    });
+
+    return Object.values(employeeSummary).sort((a, b) => a.employee.full_name.localeCompare(b.employee.full_name));
 
   }, [logs, employees, weekStart, weekEnd]);
 
+  const getShiftsForWeek = (employeeId: string): ProcessedShift[] => {
+    // This function can be implemented if needed elsewhere, but we will do the logic inside the hook for now
+    return [];
+  }
+
   return {
     weeklyData,
-    openShifts, // Return openShifts from context
     weekDisplay,
     weekOffset,
     goToPreviousWeek,
     goToNextWeek,
+    getShiftsForWeek, // Returning for future use, though not used in WeeklySummary
   };
 };

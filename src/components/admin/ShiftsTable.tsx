@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useShifts } from '@/contexts/ShiftsContext';
-import { Trash2, Edit, Plus } from 'lucide-react';
-// import { apiService } from '@/services/api';
+import { Trash2, Edit, Plus, XCircle } from 'lucide-react';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { differenceInHours, differenceInMinutes, format } from 'date-fns';
 import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
@@ -15,10 +14,12 @@ interface ShiftsTableProps {
   logs: TimeLog[];
   employees: Employee[];
   onUpdateShift: (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => Promise<void>;
-  onCorrectionComplete: () => void; // To reload data
+  onCorrectionComplete: () => void;
+  filterByEmployeeId?: string | null; // Make prop optional
+  onClearFilter?: () => void; // Make prop optional
 }
 
-const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete }) => {
+const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete, filterByEmployeeId, onClearFilter }) => {
   const [isCorrectionDialogOpen, setIsCorrectionDialogOpen] = useState(false);
   const [isAddShiftDialogOpen, setIsAddShiftDialogOpen] = useState(false);
   const [isEditShiftDialogOpen, setIsEditShiftDialogOpen] = useState(false);
@@ -77,9 +78,15 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
       });
     });
 
-    return shifts.sort((a, b) => new Date(b.entryTimestamp).getTime() - new Date(a.entryTimestamp).getTime());
+    const allShifts = shifts.sort((a, b) => new Date(b.entryTimestamp).getTime() - new Date(a.entryTimestamp).getTime());
 
-  }, [logs, employees]);
+    // AÑADIR LÓGICA DE FILTRADO
+    if (filterByEmployeeId) {
+      return allShifts.filter(shift => shift.employeeId === filterByEmployeeId);
+    }
+
+    return allShifts;
+  }, [logs, employees, filterByEmployeeId]);
 
   const handleOpenDialog = (dialog: 'correct' | 'edit', shift: ProcessedShift) => {
     setSelectedShift(shift);
@@ -97,7 +104,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
   const { deleteShift } = useShifts();
 
   const handleDeleteShift = async (shift: ProcessedShift) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este turno? Esta acción es irreversible.')) return;
+    if (!confirm('¿Estás seguro de que quieres eliminar esta actividad? Esta acción es irreversible.')) return;
     try {
       await deleteShift(shift.id);
     } catch (error) {
@@ -106,19 +113,34 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
     }
   }
 
+  const employeeFilterName = filterByEmployeeId ? employees.find(e => e.id === filterByEmployeeId)?.full_name : '';
+
   return (
     <>
-      <div className="flex justify-end mb-4">
-          <Button onClick={() => setIsAddShiftDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar Turno
-          </Button>
+      <div className="flex justify-between items-center mb-4">
+        {filterByEmployeeId && onClearFilter ? (
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-gray-600">
+              Mostrando turnos de: <span className="font-semibold">{employeeFilterName}</span>
+            </p>
+            <Button variant="outline" size="sm" onClick={onClearFilter}>
+              <XCircle className="mr-2 h-4 w-4" />
+              Limpiar Filtro
+            </Button>
+          </div>
+        ) : (
+          <div></div> // Placeholder to keep "Agregar Turno" on the right
+        )}
+        <Button onClick={() => setIsAddShiftDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Añadir Actividad
+        </Button>
       </div>
       <div className="bg-white rounded-lg shadow">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Empleado</TableHead>
+              <TableHead>Miembro</TableHead>
               <TableHead>Entrada</TableHead>
               <TableHead>Salida</TableHead>
               <TableHead>Duración (Horas)</TableHead>
@@ -132,7 +154,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
                 <TableCell>{format(new Date(shift.entryTimestamp), 'dd/MM/yy HH:mm')}</TableCell>
                 <TableCell>
                   {shift.exitTimestamp ? format(new Date(shift.exitTimestamp), 'dd/MM/yy HH:mm') : (
-                    shift.isAnomalous ? <span className="text-red-600 font-bold">Necesita Corrección</span> : 'Turno Abierto'
+                    shift.isAnomalous ? <span className="text-red-600 font-bold">Necesita Corrección</span> : 'Actividad Abierta'
                   )}
                 </TableCell>
                 <TableCell>
@@ -146,7 +168,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
                   {shift.isAnomalous ? (
                     <>
                       <Button size="sm" variant="destructive" onClick={() => handleOpenDialog('correct', shift)}>
-                        Corregir Turno
+                        Corregir Actividad
                       </Button>
                       <Button size="sm" variant="destructive" onClick={() => handleDeleteShift(shift)}>
                           <Trash2 className="h-4 w-4" />
@@ -200,5 +222,3 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
 };
 
 export default ShiftsTable;
-
-// Cache-busting comment

@@ -70,10 +70,10 @@ const ManualExitDialog: React.FC<ManualExitDialogProps> = ({ isOpen, onClose, sh
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Corregir Turno Anómalo</DialogTitle>
+          <DialogTitle>Corregir Actividad Anómala</DialogTitle>
           <DialogDescription>
             Estás corrigiendo la hora de salida para <strong>{shift.employeeName}</strong>.<br />
-            Turno iniciado: {entryDate.toLocaleString()}
+            Actividad iniciada: {entryDate.toLocaleString()}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
@@ -87,7 +87,7 @@ const ManualExitDialog: React.FC<ManualExitDialogProps> = ({ isOpen, onClose, sh
                 />
             </div>
            <p className="text-sm text-muted-foreground">
-            La salida debe ser posterior al inicio del turno, no puede exceder las {MAX_SHIFT_HOURS} horas de duración y no puede ser en el futuro.
+            La salida debe ser posterior al inicio de la actividad, no puede exceder las {MAX_SHIFT_HOURS} horas de duración y no puede ser en el futuro.
           </p>
         </div>
         <DialogFooter>

@@ -21,7 +21,7 @@ const EmployeesTable: React.FC<EmployeesTableProps> = ({ employees, onDeleteEmpl
         <TableHeader>
           <TableRow>
             <TableHead className="w-[120px]">Código</TableHead>
-            <TableHead>Nombre</TableHead>
+            <TableHead>Miembro</TableHead>
             <TableHead className="w-[120px]">Tarifa/hr</TableHead>
             <TableHead className="w-[150px] text-right">Acciones</TableHead>
           </TableRow>

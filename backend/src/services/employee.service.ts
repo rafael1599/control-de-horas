@@ -69,10 +69,17 @@ export const deleteEmployeeById = async (employeeId: string) => {
       throw new Error('Empleado no encontrado');
     }
 
+    // 1. Eliminar todos los TimeEntry asociados al empleado
+    await tx.timeEntry.deleteMany({
+      where: { employeeId: employeeId },
+    });
+
+    // 2. Eliminar el registro del empleado
     await tx.employee.delete({
       where: { id: employeeId },
     });
 
+    // 3. Eliminar el usuario asociado
     await tx.user.delete({
       where: { id: employeeToDelete.userId },
     });

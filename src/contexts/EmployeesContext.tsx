@@ -42,7 +42,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } catch (err) {
       setError('Failed to fetch employees');
       console.error(err);
-      toast.error('Error al cargar los empleados.');
+      toast.error('Error al cargar el equipo.');
     } finally {
       setLoading(false);
     }
@@ -59,12 +59,12 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
     try {
       await createEmployee(employeeData, companyId);
-      toast.success('Empleado agregado exitosamente');
+      toast.success('Miembro añadido exitosamente');
       await reloadEmployees();
     } catch (err) {
       console.error(err);
-      const errorMessage = (err as Error).message || 'No se pudo agregar el empleado.';
-      toast.error('Error al agregar empleado', { description: errorMessage });
+      const errorMessage = (err as Error).message || 'No se pudo añadir el miembro.';
+      toast.error('Error al añadir miembro', { description: errorMessage });
       throw err;
     }
   };
@@ -72,11 +72,11 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const updateEmployee = async (employeeId: string, data: Partial<Employee>) => {
     try {
       await updateEmployeeById(employeeId, data);
-      toast.success('Empleado actualizado correctamente.');
+      toast.success('Miembro actualizado correctamente.');
       await reloadEmployees();
     } catch (error) {
       console.error('Failed to update employee:', error);
-      const errorMessage = (error as Error).message || 'No se pudo actualizar el empleado.';
+      const errorMessage = (error as Error).message || 'No se pudo actualizar el miembro.';
       toast.error('Error al actualizar', { description: errorMessage });
     }
   };
@@ -84,12 +84,12 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const deleteEmployee = async (employeeId: string) => {
     try {
       await deleteEmployeeById(employeeId);
-      toast.success('Empleado eliminado correctamente.');
+      toast.success('Miembro desactivado correctamente.');
       await reloadEmployees();
     } catch (error) {
       console.error('Failed to delete employee:', error);
-      const errorMessage = (error as Error).message || 'No se pudo eliminar el empleado.';
-      toast.error('Error al eliminar', { description: errorMessage });
+      const errorMessage = (error as Error).message || 'No se pudo desactivar el miembro.';
+      toast.error('Error al desactivar', { description: errorMessage });
     }
   };
 

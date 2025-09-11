@@ -73,16 +73,16 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
       return false;
     }, [minDate, maxDate]);
 
-  const hours = date ? getHours(date) : 0; // Use 24-hour format directly
+  const hours = date ? getHours(date) : 0;
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex flex-col sm:flex-row items-stretch sm:items-center gap-2", className)}>
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
             variant={"outline"}
             className={cn(
-              "w-[280px] justify-start text-left font-normal",
+              "w-full sm:w-[280px] justify-start text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >
@@ -101,23 +101,25 @@ export function DateTimePicker({ date, setDate, minDate, maxDate, className }: D
         </PopoverContent>
       </Popover>
 
-      <Select value={hours.toString()} onValueChange={(val) => handleTimeChange(val, 'hours')}>
-        <SelectTrigger className="w-[80px]">
-          <SelectValue placeholder="Hour" />
-        </SelectTrigger>
-        <SelectContent>
-          {Array.from({ length: 24 }, (_, i) => i).map(h => <SelectItem key={h} value={h.toString()}>{h.toString().padStart(2, '0')}</SelectItem>)}
-        </SelectContent>
-      </Select>
-      <span>:</span>
-      <Select value={date ? format(date, "mm") : "00"} onValueChange={(val) => handleTimeChange(val, 'minutes')}>
-        <SelectTrigger className="w-[80px]">
-          <SelectValue placeholder="Minute" />
-        </SelectTrigger>
-        <SelectContent>
-          {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <div className="flex items-center gap-2">
+        <Select value={hours.toString()} onValueChange={(val) => handleTimeChange(val, 'hours')}>
+          <SelectTrigger className="w-full sm:w-[80px]">
+            <SelectValue placeholder="Hour" />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 24 }, (_, i) => i).map(h => <SelectItem key={h} value={h.toString()}>{h.toString().padStart(2, '0')}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <span>:</span>
+        <Select value={date ? format(date, "mm") : "00"} onValueChange={(val) => handleTimeChange(val, 'minutes')}>
+          <SelectTrigger className="w-full sm:w-[80px]">
+            <SelectValue placeholder="Minute" />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }

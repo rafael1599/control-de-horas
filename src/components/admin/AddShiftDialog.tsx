@@ -49,17 +49,17 @@ const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, employ
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Agregar Nuevo Turno Manualmente</DialogTitle>
+          <DialogTitle>Añadir Actividad Manualmente</DialogTitle>
           <DialogDescription>
-            Completa los detalles para registrar un turno pasado.
+            Completa los detalles para registrar una actividad pasada.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
           <div className="flex flex-col gap-2">
-            <label className="font-medium">Empleado</label>
+            <label className="font-medium">Miembro</label>
             <Select value={employeeId} onValueChange={setEmployeeId}>
                 <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un empleado" />
+                    <SelectValue placeholder="Selecciona un miembro" />
                 </SelectTrigger>
                 <SelectContent>
                     {employees.map(emp => (
@@ -81,7 +81,7 @@ const AddShiftDialog: React.FC<AddShiftDialogProps> = ({ isOpen, onClose, employ
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={loading}>
-            {loading ? 'Guardando...' : 'Guardar Turno'}
+            {loading ? 'Guardando...' : 'Guardar Actividad'}
           </Button>
         </DialogFooter>
       </DialogContent>

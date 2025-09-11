@@ -126,7 +126,7 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
 
   return (
     <div className="bg-card p-4 rounded-lg border">
-      <h3 className="text-lg font-semibold mb-4">{employeeToEdit ? 'Editar Empleado' : 'Agregar Empleado'}</h3>
+      <h3 className="text-lg font-semibold mb-4">{employeeToEdit ? 'Editar Miembro' : 'Añadir Miembro'}</h3>
 
       
       <Form {...form}>
@@ -199,7 +199,7 @@ const AddEmployeeForm: React.FC<AddEmployeeFormProps> = ({ onAddEmployee, onUpda
             />
             <div className="col-span-1 lg:col-span-1 flex items-end h-full">
               <Button type="submit" disabled={loading} className="w-full mt-auto">
-                {loading ? (employeeToEdit ? 'Guardando...' : 'Agregando...') : (employeeToEdit ? 'Guardar Cambios' : <><Plus className="h-4 w-4 mr-2" /> Agregar</>)}
+                {loading ? (employeeToEdit ? 'Guardando...' : 'Añadiendo...') : (employeeToEdit ? 'Guardar Cambios' : <><Plus className="h-4 w-4 mr-2" /> Añadir</>)}
               </Button>
               {employeeToEdit && (
                 <Button type="button" variant="outline" onClick={onCancelEdit} className="w-full mt-auto ml-2">

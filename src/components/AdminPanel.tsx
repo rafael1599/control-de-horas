@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AddEmployeeForm from './admin/AddEmployeeForm';
 import EmployeesTable from './admin/EmployeesTable';
 import ShiftsTable from './admin/ShiftsTable';
+import WeeklySummary from './admin/WeeklySummary';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +16,7 @@ interface AdminPanelProps {
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   const [selectedEmployeeToEdit, setSelectedEmployeeToEdit] = useState<Employee | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const {
     employees,
     loading: loadingEmployees,
@@ -54,8 +56,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
 
       <Tabs defaultValue="logs" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="employees">Empleados</TabsTrigger>
-          <TabsTrigger value="logs">Registros</TabsTrigger>
+          <TabsTrigger value="employees">Equipo</TabsTrigger>
+          <TabsTrigger value="logs">Actividad</TabsTrigger>
         </TabsList>
 
         <TabsContent value="employees" className="space-y-4">
@@ -79,11 +81,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4">
+          <WeeklySummary 
+            employees={employees} 
+            logs={shifts}
+            selectedEmployeeId={selectedEmployeeId}
+            onEmployeeSelect={setSelectedEmployeeId}
+          />
           <ShiftsTable 
             logs={shifts} 
             employees={employees} 
             onUpdateShift={updateShift}
-            onCorrectionComplete={reloadShifts}
+            onCorrectionComplete={() => {
+              reloadShifts();
+              setSelectedEmployeeId(null); // Limpiar filtro al recargar
+            }}
+            filterByEmployeeId={selectedEmployeeId}
+            onClearFilter={() => setSelectedEmployeeId(null)}
           />
         </TabsContent>
       </Tabs>

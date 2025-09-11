@@ -63,16 +63,16 @@ const EditShiftDialog: React.FC<EditShiftDialogProps> = ({ isOpen, onClose, shif
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Editar Turno</DialogTitle>
+          <DialogTitle>Editar Actividad</DialogTitle>
           <DialogDescription>
-            Ajusta las horas de entrada y salida para el turno de <strong>{shift.employeeName}</strong>.
+            Ajusta las horas de entrada y salida para la actividad de <strong>{shift.employeeName}</strong>.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
           {isUpdating ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              <p className="ml-4 text-muted-foreground">Actualizando turno...</p>
+              <p className="ml-4 text-muted-foreground">Actualizando actividad...</p>
             </div>
           ) : (
             <>
