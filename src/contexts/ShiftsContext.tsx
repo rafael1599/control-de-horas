@@ -5,6 +5,8 @@ import { useEmployees } from './EmployeesContext';
 import { differenceInSeconds } from 'date-fns';
 import { formatDuration } from '@/lib/utils';
 import { getTimeEntriesByCompany, createManualShift, deleteShift as apiDeleteShift, updateShift as apiUpdateShift } from '@/services/api';
+import { MAX_SHIFT_MINUTES } from '@/config/rules';
+import { differenceInMinutes } from 'date-fns';
 
 // El backend ahora devuelve objetos TimeEntry, que son funcionalmente equivalentes a nuestros Shifts.
 // Usaremos el tipo TimeLog como base para nuestros turnos procesados.
@@ -152,6 +154,16 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const entryTimestamp = shiftLogs.entry.timestamp;
         const exitTimestamp = shiftLogs.exit?.timestamp;
         const duration = exitTimestamp ? differenceInSeconds(new Date(exitTimestamp), new Date(entryTimestamp)) : undefined;
+        
+        // NEW: Anomaly detection logic
+        let isAnomalous = false;
+        if (exitTimestamp) {
+          // For closed shifts
+          isAnomalous = differenceInMinutes(new Date(exitTimestamp), new Date(entryTimestamp)) > MAX_SHIFT_MINUTES;
+        } else {
+          // For open shifts
+          isAnomalous = differenceInMinutes(new Date(), new Date(entryTimestamp)) > MAX_SHIFT_MINUTES;
+        }
 
         result.push({
           id: shiftId,
@@ -162,7 +174,7 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           entryRow: shiftLogs.entry.row,
           exitRow: shiftLogs.exit?.row,
           duration: duration ? formatDuration(duration) : undefined, // Assuming formatDuration handles seconds
-          isAnomalous: false, // Default to false, can be set based on other rules
+          isAnomalous, // Use the calculated value
         });
       }
     });

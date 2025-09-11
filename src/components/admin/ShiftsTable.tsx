@@ -143,7 +143,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
                   )}
                 </TableCell>
                 <TableCell className="flex gap-2">
-                  {shift.isAnomalous && !shift.exitTimestamp ? (
+                  {shift.isAnomalous ? (
                     <>
                       <Button size="sm" variant="destructive" onClick={() => handleOpenDialog('correct', shift)}>
                         Corregir Turno

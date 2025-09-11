@@ -111,17 +111,8 @@ const AppLayout: React.FC = () => {
         const durationMinutes = differenceInMinutes(now, entryDate);
 
         if (durationMinutes > MAX_SHIFT_MINUTES) {
-          // Turno demasiado largo, requiere corrección manual
-          setAnomalousShift({
-            id: shiftToClose.id, // Usar el ID real del turno abierto
-            employeeId: employeeId,
-            employeeName: employee.full_name,
-            entryTimestamp: shiftToClose.entryTimestamp,
-            isAnomalous: true,
-            entryRow: 0, // No real row
-          });
-          setShowManualExitDialog(true);
-          return;
+          // Turno demasiado largo, mostrar advertencia no bloqueante
+          toast.warning(`El turno ha superado las ${MAX_SHIFT_HOURS} horas. Se ha registrado la salida, pero este turno será marcado para revisión.`);
         }
 
         // Si la salida es muy rápida después de la entrada
