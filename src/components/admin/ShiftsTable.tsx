@@ -159,7 +159,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
                 </TableCell>
                 <TableCell>
                   {shift.duration !== undefined ? (
-                    shift.duration
+                    shift.duration.toFixed(2)
                   ) : (
                     shift.isAnomalous ? `> ${MAX_SHIFT_HOURS}h` : '-'
                   )}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { startOfWeek, endOfWeek, addWeeks, format, set, differenceInHours } from 'date-fns';
+import { startOfWeek, endOfWeek, addWeeks, format, set, differenceInMilliseconds } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
 import { useEmployees } from '@/contexts/EmployeesContext';
@@ -61,7 +61,7 @@ export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
             employeeName: employeeMap.get(openShift.employeeId)?.full_name || openShift.employeeId,
             entryTimestamp: openShift.timestamp,
             exitTimestamp: log.timestamp,
-            duration: differenceInHours(new Date(log.timestamp), new Date(openShift.timestamp)),
+                        duration: differenceInMilliseconds(new Date(log.timestamp), new Date(openShift.timestamp)) / (1000 * 60 * 60),
             entryRow: openShift.row,
             exitRow: log.row,
           });

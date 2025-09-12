@@ -24,6 +24,10 @@ import { addHours, differenceInMinutes, isAfter, isBefore } from 'date-fns';
 import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES, MIN_TIME_BETWEEN_SHIFTS_MINUTES } from '@/config/rules';
 
 const AppLayout: React.FC = () => {
+  React.useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const { isAdmin, logout } = useAuth();
   const { employees, loading: loadingEmployees, reloadEmployees } = useEmployees();
   const { shifts: logs, openShifts, processedShifts, loading: loadingShifts, reloadShifts, updateShift } = useShifts();
