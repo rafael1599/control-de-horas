@@ -5,7 +5,8 @@ import * as employeeService from '../services/employee.service';
 export const getEmployees = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.params;
-    const employees = await employeeService.getAllEmployeesByCompany(companyId);
+    const { status } = req.query as { status: 'active' | 'inactive' };
+    const employees = await employeeService.getAllEmployeesByCompany(companyId, status);
     res.json(employees);
   } catch (error) {
     console.error(`Error fetching employees for company ${req.params.companyId}:`, error);
@@ -65,5 +66,21 @@ export const updateEmployee = async (req: Request, res: Response) => {
     }
     console.error(`Error updating employee ${req.params.id}:`, error);
     res.status(500).json({ error: "No se pudo actualizar el empleado" });
+  }
+};
+
+// Controlador para reactivar un empleado
+export const reactivateEmployee = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const reactivatedEmployee = await employeeService.reactivateEmployeeById(id);
+    res.json(reactivatedEmployee);
+  } catch (error) {
+    // @ts-ignore
+    if (error.message === 'Miembro no encontrado') {
+      return res.status(404).json({ error: "Miembro no encontrado" });
+    }
+    console.error(`Error reactivating employee ${req.params.id}:`, error);
+    res.status(500).json({ error: "No se pudo reactivar el miembro" });
   }
 };

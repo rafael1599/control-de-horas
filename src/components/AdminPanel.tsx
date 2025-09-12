@@ -8,33 +8,54 @@ import WeeklySummary from './admin/WeeklySummary';
 import { useEmployees } from '@/contexts/EmployeesContext';
 import { useShifts } from '@/contexts/ShiftsContext';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Employee } from '@/types'; // Import Employee type
+import { Employee } from '@/types';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../components/ui/dialog";
+import { Plus } from 'lucide-react';
+import AddShiftDialog from './admin/AddShiftDialog';
 
 interface AdminPanelProps {
   onBack: () => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedEmployeeToEdit, setSelectedEmployeeToEdit] = useState<Employee | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
-  const {
-    employees,
-    loading: loadingEmployees,
-    addEmployee,
-    updateEmployee,
-    deleteEmployee,
-  } = useEmployees();
-
-  const {
-    shifts,
-    loading: loadingShifts,
-    updateShift,
-    reloadShifts,
-  } = useShifts();
+  const [isShiftDetailsCollapsibleOpen, setIsShiftDetailsCollapsibleOpen] = useState(false);
+  const [isAddShiftDialogOpen, setIsAddShiftDialogOpen] = useState(false);
+  
+  const { employees, loading: loadingEmployees, addEmployee, updateEmployee, deleteEmployee, statusFilter, setStatusFilter, reactivateEmployee } = useEmployees();
+  const { shifts, loading: loadingShifts, updateShift, reloadShifts } = useShifts();
 
   const loading = loadingEmployees || loadingShifts;
 
-  if (loading && employees.length === 0) { // Improved loading state
+  const handleAddNewMember = () => {
+    setSelectedEmployeeToEdit(null);
+    setIsFormOpen(true);
+  };
+
+  const handleSelectMemberForEdit = (employee: Employee) => {
+    setSelectedEmployeeToEdit(employee);
+    setIsFormOpen(true);
+  };
+
+  const handleFormSuccess = async (action: Promise<void>) => {
+    await action;
+    setIsFormOpen(false);
+  };
+
+  if (loading && employees.length === 0) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
@@ -61,22 +82,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         </TabsList>
 
         <TabsContent value="employees" className="space-y-4">
-          <AddEmployeeForm
-            onAddEmployee={addEmployee}
-            onUpdateEmployee={updateEmployee} // ADDED: Pass the updateEmployee function
-            loading={loading}
-            employeeToEdit={selectedEmployeeToEdit}
-            onCancelEdit={() => setSelectedEmployeeToEdit(null)}
-            employees={employees} // ADDED: Pass the employees array
-          />
+          <div className="flex justify-between items-center">
+            <Tabs defaultValue="active" onValueChange={(value) => setStatusFilter(value as 'active' | 'inactive')}>
+              <TabsList>
+                <TabsTrigger value="active">Activos</TabsTrigger>
+                <TabsTrigger value="inactive">Inactivos</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button onClick={handleAddNewMember}>
+              <Plus className="mr-2 h-4 w-4" />
+              Añadir Miembro
+            </Button>
+          </div>
           <EmployeesTable
             employees={employees}
-            onUpdateEmployee={updateEmployee} // This prop is no longer used by EmployeesTable, but keeping it for now.
             onDeleteEmployee={deleteEmployee}
-            onSelectEmployeeForEdit={(employee) => {
-              setSelectedEmployeeToEdit(employee);
-              console.log('Selected employee for edit:', employee);
-            }} // ADDED
+            onSelectEmployeeForEdit={handleSelectMemberForEdit}
+            onReactivateEmployee={reactivateEmployee}
+            viewMode={statusFilter}
           />
         </TabsContent>
 
@@ -84,22 +107,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
           <WeeklySummary 
             employees={employees} 
             logs={shifts}
-            selectedEmployeeId={selectedEmployeeId}
-            onEmployeeSelect={setSelectedEmployeeId}
           />
-          <ShiftsTable 
-            logs={shifts} 
-            employees={employees} 
+          <div className="flex justify-end gap-2 mt-4">
+            
+            
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <AddEmployeeForm
+            onAddEmployee={(data) => handleFormSuccess(addEmployee(data))}
+            onUpdateEmployee={(id, data) => handleFormSuccess(updateEmployee(id, data))}
+            loading={loading}
+            employeeToEdit={selectedEmployeeToEdit}
+            onCancelEdit={() => setIsFormOpen(false)}
+            employees={employees}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Collapsible open={isShiftDetailsCollapsibleOpen} onOpenChange={setIsShiftDetailsCollapsibleOpen} className="w-full space-y-2">
+        <div className="flex justify-end gap-2 mt-4">
+          <Button onClick={() => setIsAddShiftDialogOpen(true)}>
+            Añadir Turno
+          </Button>
+          <CollapsibleTrigger asChild>
+            <Button>
+              Ver Actividad Detallada
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="space-y-4">
+          <ShiftsTable
+            logs={shifts}
+            employees={employees}
             onUpdateShift={updateShift}
-            onCorrectionComplete={() => {
-              reloadShifts();
-              setSelectedEmployeeId(null); // Limpiar filtro al recargar
-            }}
+            onCorrectionComplete={reloadShifts}
             filterByEmployeeId={selectedEmployeeId}
             onClearFilter={() => setSelectedEmployeeId(null)}
           />
-        </TabsContent>
-      </Tabs>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <AddShiftDialog
+        isOpen={isAddShiftDialogOpen}
+        onClose={() => setIsAddShiftDialogOpen(false)}
+        employees={employees}
+      />
     </div>
   );
 };

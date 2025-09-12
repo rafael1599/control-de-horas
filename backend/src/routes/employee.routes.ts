@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getEmployees, createEmployee, deleteEmployee, updateEmployee } from '../controllers/employee.controller';
+import { getEmployees, createEmployee, deleteEmployee, updateEmployee, reactivateEmployee } from '../controllers/employee.controller';
 
 const router = Router();
 
@@ -16,5 +16,8 @@ router.put('/:id', updateEmployee);
 
 // DELETE /api/v1/employees/:id
 router.delete('/:id', deleteEmployee);
+
+// PATCH /api/v1/employees/:id/reactivate
+router.patch('/:id/reactivate', reactivateEmployee);
 
 export default router;

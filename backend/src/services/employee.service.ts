@@ -4,9 +4,12 @@ import { PrismaClient, Prisma } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Servicio para obtener todos los empleados de una compañía
-export const getAllEmployeesByCompany = async (companyId: string) => {
+export const getAllEmployeesByCompany = async (companyId: string, status: 'active' | 'inactive' = 'active') => {
   const employees = await prisma.employee.findMany({
-    where: { companyId },
+    where: { 
+      companyId,
+      isActive: status === 'active'
+    },
     orderBy: { createdAt: 'asc' },
     include: {
       user: {
@@ -60,29 +63,28 @@ export const createEmployee = async (employeeData: { full_name: string; email: s
 // Servicio para eliminar un empleado por su ID
 export const deleteEmployeeById = async (employeeId: string) => {
   return await prisma.$transaction(async (tx) => {
-    const employeeToDelete = await tx.employee.findUnique({
+    const employeeToDeactivate = await tx.employee.findUnique({
       where: { id: employeeId },
       select: { userId: true },
     });
 
-    if (!employeeToDelete) {
-      throw new Error('Empleado no encontrado');
+    if (!employeeToDeactivate) {
+      throw new Error('Miembro no encontrado');
     }
 
-    // 1. Eliminar todos los TimeEntry asociados al empleado
-    await tx.timeEntry.deleteMany({
-      where: { employeeId: employeeId },
-    });
-
-    // 2. Eliminar el registro del empleado
-    await tx.employee.delete({
+    // 1. Desactivar el registro del empleado
+    const deactivatedEmployee = await tx.employee.update({
       where: { id: employeeId },
+      data: { isActive: false },
     });
 
-    // 3. Eliminar el usuario asociado
-    await tx.user.delete({
-      where: { id: employeeToDelete.userId },
+    // 2. Desactivar el usuario asociado
+    await tx.user.update({
+      where: { id: employeeToDeactivate.userId },
+      data: { isActive: false },
     });
+
+    return deactivatedEmployee;
   });
 };
 
@@ -103,5 +105,33 @@ export const updateEmployeeById = async (employeeId: string, data: { full_name?:
       employee_code: data.employee_code,
       hourly_rate: data.hourly_rate ? parseFloat(data.hourly_rate.toString()) : undefined,
     },
+  });
+};
+
+// Servicio para reactivar un empleado por su ID
+export const reactivateEmployeeById = async (employeeId: string) => {
+  return await prisma.$transaction(async (tx) => {
+    const employeeToReactivate = await tx.employee.findUnique({
+      where: { id: employeeId },
+      select: { userId: true },
+    });
+
+    if (!employeeToReactivate) {
+      throw new Error('Miembro no encontrado');
+    }
+
+    // 1. Reactivar el registro del empleado
+    const reactivatedEmployee = await tx.employee.update({
+      where: { id: employeeId },
+      data: { isActive: true },
+    });
+
+    // 2. Reactivar el usuario asociado
+    await tx.user.update({
+      where: { id: employeeToReactivate.userId },
+      data: { isActive: true },
+    });
+
+    return reactivatedEmployee;
   });
 };

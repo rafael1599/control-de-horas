@@ -2,9 +2,9 @@ import { Employee, EmployeeCreationData, TimeLog } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
 
-export const getEmployeesByCompany = async (companyId: string): Promise<Employee[]> => {
-  console.log(`Fetching employees for company ID: ${companyId}`);
-  const response = await fetch(`${API_URL}/employees/by-company/${companyId}`);
+export const getEmployeesByCompany = async (companyId: string, status: 'active' | 'inactive' = 'active'): Promise<Employee[]> => {
+  console.log(`Fetching employees for company ID: ${companyId} with status: ${status}`);
+  const response = await fetch(`${API_URL}/employees/by-company/${companyId}?status=${status}`);
   if (!response.ok) {
     throw new Error('Network response was not ok');
   }
@@ -50,6 +50,20 @@ export const updateEmployeeById = async (employeeId: string, data: Partial<Emplo
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Network response was not ok');
+  }
+
+  return response.json();
+};
+
+export const reactivateEmployeeById = async (employeeId: string): Promise<Employee> => {
+  console.log(`Attempting to reactivate employee with ID: ${employeeId}`);
+  const response = await fetch(`${API_URL}/employees/${employeeId}/reactivate`, {
+    method: 'PATCH',
   });
 
   if (!response.ok) {

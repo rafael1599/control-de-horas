@@ -37,6 +37,7 @@ model User {
   email         String @unique
   password_hash String @db.VarChar(255)
   role          Role
+  isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -53,6 +54,7 @@ model Employee {
   employee_code String?
   full_name     String
   hourly_rate   Float?
+  isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

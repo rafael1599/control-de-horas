@@ -99,7 +99,13 @@ export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
       summary.shifts.sort((a, b) => new Date(a.entryTimestamp).getTime() - new Date(b.entryTimestamp).getTime());
     });
 
-    return Object.values(employeeSummary).sort((a, b) => a.employee.full_name.localeCompare(b.employee.full_name));
+    const summaryWithPayment = Object.values(employeeSummary).map(summary => ({
+      ...summary,
+      payment: summary.hours * (summary.employee.pay_rate || 0)
+    }));
+
+    // Sort by payment in descending order
+    return summaryWithPayment.sort((a, b) => b.payment - a.payment);
 
   }, [logs, employees, weekStart, weekEnd]);
 

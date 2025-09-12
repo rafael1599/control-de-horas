@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { getEmployeesByCompany, createEmployee, deleteEmployeeById, updateEmployeeById } from '@/services/api';
+import { getEmployeesByCompany, createEmployee, deleteEmployeeById, updateEmployeeById, reactivateEmployeeById } from '@/services/api';
 import { type Employee, type EmployeeCreationData } from '@/types';
 import { toast } from 'sonner';
 
@@ -7,10 +7,13 @@ interface EmployeesContextType {
   employees: Employee[];
   loading: boolean;
   error: string | null;
-  companyId: string | null; // <-- AÑADIDO
+  companyId: string | null;
+  statusFilter: 'active' | 'inactive';
+  setStatusFilter: (status: 'active' | 'inactive') => void;
   addEmployee: (employeeData: EmployeeCreationData) => Promise<void>;
   updateEmployee: (employeeId: string, data: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
+  reactivateEmployee: (id: string) => Promise<void>;
   reloadEmployees: () => void;
 }
 
@@ -28,6 +31,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'active' | 'inactive'>('active');
 
   // ID de compañía hardcoded temporalmente. Ahora será accesible globalmente.
   const companyId = import.meta.env.VITE_COMPANY_ID;
@@ -36,7 +40,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!companyId) return;
     setLoading(true);
     try {
-      const fetchedEmployees = await getEmployeesByCompany(companyId);
+      const fetchedEmployees = await getEmployeesByCompany(companyId, statusFilter);
       setEmployees(fetchedEmployees);
       setError(null);
     } catch (err) {
@@ -46,7 +50,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, statusFilter]);
 
   useEffect(() => {
     reloadEmployees();
@@ -93,16 +97,31 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const reactivateEmployee = async (employeeId: string) => {
+    try {
+      await reactivateEmployeeById(employeeId);
+      toast.success('Miembro reactivado correctamente.');
+      await reloadEmployees();
+    } catch (error) {
+      console.error('Failed to reactivate employee:', error);
+      const errorMessage = (error as Error).message || 'No se pudo reactivar el miembro.';
+      toast.error('Error al reactivar', { description: errorMessage });
+    }
+  };
+
   return (
     <EmployeesContext.Provider
       value={{
         employees,
         loading,
         error,
-        companyId, // <-- AÑADIDO
+        companyId,
+        statusFilter,
+        setStatusFilter,
         addEmployee,
         updateEmployee,
         deleteEmployee,
+        reactivateEmployee,
         reloadEmployees,
       }}
     >
