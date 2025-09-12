@@ -2,9 +2,10 @@ import { Employee, EmployeeCreationData, TimeLog } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
 
-export const getEmployeesByCompany = async (companyId: string, status: 'active' | 'inactive' = 'active'): Promise<Employee[]> => {
+export const getEmployeesByCompany = async (companyId: string, status?: 'active' | 'inactive'): Promise<Employee[]> => {
   console.log(`Fetching employees for company ID: ${companyId} with status: ${status}`);
-  const response = await fetch(`${API_URL}/employees/by-company/${companyId}?status=${status}`);
+  const url = status ? `${API_URL}/employees/by-company/${companyId}?status=${status}` : `${API_URL}/employees/by-company/${companyId}`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Network response was not ok');
   }

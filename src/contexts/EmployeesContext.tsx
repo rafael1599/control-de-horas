@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
 import { getEmployeesByCompany, createEmployee, deleteEmployeeById, updateEmployeeById, reactivateEmployeeById } from '@/services/api';
 import { type Employee, type EmployeeCreationData } from '@/types';
 import { toast } from 'sonner';
 
 interface EmployeesContextType {
   employees: Employee[];
+  allEmployees: Employee[];
   loading: boolean;
   error: string | null;
   companyId: string | null;
@@ -28,20 +29,19 @@ export const useEmployees = () => {
 };
 
 export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'active' | 'inactive'>('active');
 
-  // ID de compañía hardcoded temporalmente. Ahora será accesible globalmente.
   const companyId = import.meta.env.VITE_COMPANY_ID;
 
   const reloadEmployees = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
     try {
-      const fetchedEmployees = await getEmployeesByCompany(companyId, statusFilter);
-      setEmployees(fetchedEmployees);
+      const fetchedEmployees = await getEmployeesByCompany(companyId);
+      setAllEmployees(fetchedEmployees);
       setError(null);
     } catch (err) {
       setError('Failed to fetch employees');
@@ -50,11 +50,15 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setLoading(false);
     }
-  }, [companyId, statusFilter]);
+  }, [companyId]);
 
   useEffect(() => {
     reloadEmployees();
   }, [reloadEmployees]);
+
+  const employees = useMemo(() => {
+    return allEmployees.filter(emp => statusFilter === 'active' ? emp.isActive : !emp.isActive);
+  }, [allEmployees, statusFilter]);
 
   const addEmployee = async (employeeData: EmployeeCreationData) => {
     if (!companyId) {
@@ -113,6 +117,7 @@ export const EmployeesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <EmployeesContext.Provider
       value={{
         employees,
+        allEmployees,
         loading,
         error,
         companyId,

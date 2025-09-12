@@ -4,12 +4,14 @@ import { PrismaClient, Prisma } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Servicio para obtener todos los empleados de una compañía
-export const getAllEmployeesByCompany = async (companyId: string, status: 'active' | 'inactive' = 'active') => {
+export const getAllEmployeesByCompany = async (companyId: string, status?: 'active' | 'inactive') => {
+  const where: Prisma.EmployeeWhereInput = { companyId };
+  if (status) {
+    where.isActive = status === 'active';
+  }
+
   const employees = await prisma.employee.findMany({
-    where: { 
-      companyId,
-      isActive: status === 'active'
-    },
+    where,
     orderBy: { createdAt: 'asc' },
     include: {
       user: {

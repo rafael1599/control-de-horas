@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useShifts } from '@/contexts/ShiftsContext';
 import { Trash2, Edit, Plus, XCircle } from 'lucide-react';
 import { type Employee, type TimeLog, type ProcessedShift } from '@/types';
-import { differenceInHours, differenceInMinutes, format } from 'date-fns';
+import { differenceInMilliseconds, differenceInMinutes, format } from 'date-fns';
 import { MAX_SHIFT_HOURS, MAX_SHIFT_MINUTES } from '@/config/rules';
 import ManualExitDialog from './ManualExitDialog';
 import AddShiftDialog from './AddShiftDialog';
@@ -15,8 +15,8 @@ interface ShiftsTableProps {
   employees: Employee[];
   onUpdateShift: (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => Promise<void>;
   onCorrectionComplete: () => void;
-  filterByEmployeeId?: string | null; // Make prop optional
-  onClearFilter?: () => void; // Make prop optional
+  filterByEmployeeId?: string | null;
+  onClearFilter?: () => void;
 }
 
 const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete, filterByEmployeeId, onClearFilter }) => {
@@ -50,12 +50,12 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
         if (openShifts.has(log.employeeId)) {
           const openShift = openShifts.get(log.employeeId)!;
           shifts.push({
-            id: openShift.shiftId!, // <-- ID CORREGIDO
+            id: openShift.shiftId!,
             employeeId: openShift.employeeId,
             employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
             entryTimestamp: openShift.timestamp,
             exitTimestamp: log.timestamp,
-            duration: differenceInHours(new Date(log.timestamp), new Date(openShift.timestamp)),
+            duration: differenceInMilliseconds(new Date(log.timestamp), new Date(openShift.timestamp)) / (1000 * 60 * 60),
             isAnomalous: differenceInMinutes(new Date(log.timestamp), new Date(openShift.timestamp)) > MAX_SHIFT_MINUTES,
             entryRow: openShift.row,
             exitRow: log.row,
@@ -80,7 +80,6 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
 
     const allShifts = shifts.sort((a, b) => new Date(b.entryTimestamp).getTime() - new Date(a.entryTimestamp).getTime());
 
-    // AÑADIR LÓGICA DE FILTRADO
     if (filterByEmployeeId) {
       return allShifts.filter(shift => shift.employeeId === filterByEmployeeId);
     }
@@ -108,7 +107,6 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
     try {
       await deleteShift(shift.id);
     } catch (error) {
-      // Error is already handled and toasted in the context
       console.error("Failed to delete shift from component:", error);
     }
   }
@@ -129,7 +127,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
             </Button>
           </div>
         ) : (
-          <div></div> // Placeholder to keep "Agregar Turno" on the right
+          <div></div>
         )}
         <Button onClick={() => setIsAddShiftDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -141,8 +139,9 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
           <TableHeader>
             <TableRow>
               <TableHead>Miembro</TableHead>
-              <TableHead>Entrada</TableHead>
-              <TableHead>Salida</TableHead>
+              <TableHead className="hidden md:table-cell">Entrada</TableHead>
+              <TableHead className="hidden md:table-cell">Salida</TableHead>
+              <TableHead className="md:hidden">Periodo</TableHead>
               <TableHead>Duración (Horas)</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -151,12 +150,23 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
             {processedShifts.map((shift) => (
               <TableRow key={shift.id} className={shift.isAnomalous ? 'bg-red-100' : ''}>
                 <TableCell>{shift.employeeName}</TableCell>
-                <TableCell>{format(new Date(shift.entryTimestamp), 'dd/MM/yy HH:mm')}</TableCell>
-                <TableCell>
+                
+                {/* Desktop cells */}
+                <TableCell className="hidden md:table-cell">{format(new Date(shift.entryTimestamp), 'dd/MM/yy HH:mm')}</TableCell>
+                <TableCell className="hidden md:table-cell">
                   {shift.exitTimestamp ? format(new Date(shift.exitTimestamp), 'dd/MM/yy HH:mm') : (
                     shift.isAnomalous ? <span className="text-red-600 font-bold">Necesita Corrección</span> : 'Actividad Abierta'
                   )}
                 </TableCell>
+
+                {/* Mobile cell */}
+                <TableCell className="md:hidden">
+                  <div className="flex flex-col text-xs">
+                    <span><span className="font-semibold">In:</span> {format(new Date(shift.entryTimestamp), 'dd/MM HH:mm')}</span>
+                    <span><span className="font-semibold">Out:</span> {shift.exitTimestamp ? format(new Date(shift.exitTimestamp), 'dd/MM HH:mm') : (shift.isAnomalous ? <span className="text-red-500">Error</span> : 'Abierto')}</span>
+                  </div>
+                </TableCell>
+
                 <TableCell>
                   {shift.duration !== undefined ? (
                     shift.duration.toFixed(2)

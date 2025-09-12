@@ -5,7 +5,7 @@ import * as employeeService from '../services/employee.service';
 export const getEmployees = async (req: Request, res: Response) => {
   try {
     const { companyId } = req.params;
-    const { status } = req.query as { status: 'active' | 'inactive' };
+    const { status } = req.query as { status?: 'active' | 'inactive' };
     const employees = await employeeService.getAllEmployeesByCompany(companyId, status);
     res.json(employees);
   } catch (error) {
