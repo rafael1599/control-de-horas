@@ -41,10 +41,16 @@ export interface Shift {
   exitRow?: number;
 }
 
-export interface ProcessedShift extends Shift {
+export interface ProcessedShift {
+  id: string;
+  employeeId: string;
   employeeName: string;
-  duration?: number;
+  duration?: string;
   isAnomalous: boolean;
+  entryTimestamp: Date;
+  exitTimestamp?: Date;
+  entryRow?: number;
+  exitRow?: number;
 }
 
 export interface OpenShift {
@@ -52,4 +58,14 @@ export interface OpenShift {
   employeeName: string;
   entryTimestamp: Date;
   liveDuration: string;
+}
+
+export interface TimeEntry {
+  id: string;
+  start_time: string;
+  end_time: string | null;
+  employeeId: string;
+  companyId: string;
+  createdAt: string;
+  updatedAt: string;
 }

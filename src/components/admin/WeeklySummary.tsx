@@ -37,10 +37,10 @@ import {
 
 interface WeeklySummaryProps {
   employees: Employee[];
-  logs: TimeLog[];
+  shifts: ProcessedShift[];
 }
 
-const WeeklySummary: React.FC<WeeklySummaryProps> = ({ employees, logs }) => {
+const WeeklySummary: React.FC<WeeklySummaryProps> = ({ employees, shifts }) => {
   const { deleteShift } = useShifts();
   const {
     weeklyData,
@@ -48,7 +48,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ employees, logs }) => {
     weekOffset,
     goToPreviousWeek,
     goToNextWeek,
-  } = useWeeklyDashboard(employees, logs);
+  } = useWeeklyDashboard(employees, shifts);
 
   const [editingShift, setEditingShift] = useState<ProcessedShift | null>(null);
   const [correctingShift, setCorrectingShift] = useState<ProcessedShift | null>(null);
@@ -118,7 +118,7 @@ const WeeklySummary: React.FC<WeeklySummaryProps> = ({ employees, logs }) => {
                         </TableHeader>
                         <TableBody>
                           {summary.shifts.map((shift) => {
-                            const formattedDuration = shift.duration ? `${shift.duration.toFixed(2)}h` : '-';
+                            const formattedDuration = shift.duration || '-';
                             const dayString = format(new Date(shift.entryTimestamp), 'eeee d', { locale: es });
                             const capitalizedDayString = dayString.charAt(0).toUpperCase() + dayString.slice(1);
 

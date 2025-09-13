@@ -1,4 +1,4 @@
-import { Employee, EmployeeCreationData, TimeLog } from '@/types';
+import { Employee, EmployeeCreationData, TimeEntry } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api/v1';
 
@@ -93,7 +93,7 @@ export const clockInOut = async (employeeId: string, companyId: string) => {
   return response.json();
 };
 
-export const getTimeEntriesByCompany = async (companyId: string): Promise<TimeLog[]> => {
+export const getTimeEntriesByCompany = async (companyId: string): Promise<TimeEntry[]> => {
   console.log(`Fetching time entries for company ID: ${companyId}`);
   const response = await fetch(`${API_URL}/time-entries/by-company/${companyId}`);
   if (!response.ok) {

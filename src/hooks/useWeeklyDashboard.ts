@@ -12,7 +12,7 @@ const getCustomWeekStart = (date: Date): Date => {
   return start;
 };
 
-export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
+export const useWeeklyDashboard = (employees: Employee[], shifts: ProcessedShift[]) => {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const goToPreviousWeek = () => setWeekOffset(prev => prev - 1);
@@ -32,43 +32,15 @@ export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
   }, [weekOffset]);
 
   const weeklyData = useMemo(() => {
-    if (!logs || !employees) return [];
+    if (!shifts || !employees) return [];
 
-    const filteredLogs = logs.filter(log => {
-      const logDate = new Date(log.timestamp);
-      return logDate >= weekStart && logDate < weekEnd;
+    const shiftsInWeek = shifts.filter(shift => {
+      const shiftDate = new Date(shift.entryTimestamp);
+      // Only include shifts that have an end time for weekly summary
+      return shift.exitTimestamp && shiftDate >= weekStart && shiftDate < weekEnd;
     });
 
     const employeeMap = new Map(employees.map(e => [e.id, e]));
-    const openShifts = new Map<string, TimeLog>();
-    const shiftsInWeek: ProcessedShift[] = [];
-
-    const sortedLogs = filteredLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    sortedLogs.forEach(log => {
-      if (log.type === 'ENTRADA') {
-        // Handle cases of multiple entries without exit
-        if (openShifts.has(log.employeeId)) {
-            // This is an anomalous situation, the previous shift is orphaned.
-        }
-        openShifts.set(log.employeeId, log);
-      } else if (log.type === 'SALIDA') {
-        if (openShifts.has(log.employeeId)) {
-          const openShift = openShifts.get(log.employeeId)!;
-          shiftsInWeek.push({
-            id: openShift.shiftId!,
-            employeeId: openShift.employeeId,
-            employeeName: employeeMap.get(openShift.employeeId)?.full_name || openShift.employeeId,
-            entryTimestamp: openShift.timestamp,
-            exitTimestamp: log.timestamp,
-                        duration: differenceInMilliseconds(new Date(log.timestamp), new Date(openShift.timestamp)) / (1000 * 60 * 60),
-            entryRow: openShift.row,
-            exitRow: log.row,
-          });
-          openShifts.delete(log.employeeId);
-        }
-      }
-    });
 
     const employeeSummary: Record<string, {
       hours: number;
@@ -85,11 +57,11 @@ export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
             employeeSummary[shift.employeeId] = { hours: 0, employee, hasAnomalousShift: false, shifts: [] };
         }
 
-        const duration = shift.duration || 0;
-        employeeSummary[shift.employeeId].hours += duration;
+        const durationInHours = shift.exitTimestamp ? (differenceInMilliseconds(new Date(shift.exitTimestamp), new Date(shift.entryTimestamp)) / (1000 * 60 * 60)) : 0;
+        employeeSummary[shift.employeeId].hours += durationInHours;
         employeeSummary[shift.employeeId].shifts.push(shift);
 
-        if (duration > 18) {
+        if (shift.isAnomalous) {
             employeeSummary[shift.employeeId].hasAnomalousShift = true;
         }
     });
@@ -101,13 +73,13 @@ export const useWeeklyDashboard = (employees: Employee[], logs: TimeLog[]) => {
 
     const summaryWithPayment = Object.values(employeeSummary).map(summary => ({
       ...summary,
-      payment: summary.hours * (summary.employee.pay_rate || 0)
+      payment: summary.hours * (summary.employee.hourly_rate || 0)
     }));
 
-    // Sort by payment in descending order
-    return summaryWithPayment.sort((a, b) => b.payment - a.payment);
+    // Sort by total hours in descending order
+    return summaryWithPayment.sort((a, b) => b.hours - a.hours);
 
-  }, [logs, employees, weekStart, weekEnd]);
+  }, [shifts, employees, weekStart, weekEnd]);
 
   const getShiftsForWeek = (employeeId: string): ProcessedShift[] => {
     // This function can be implemented if needed elsewhere, but we will do the logic inside the hook for now

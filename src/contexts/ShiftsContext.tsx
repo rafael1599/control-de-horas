@@ -1,19 +1,16 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, useMemo } from 'react';
-import { type TimeLog, type OpenShift, type Shift } from '@/types'; // Shift se usará implicitamente
+import { type TimeEntry, type OpenShift, type ProcessedShift } from '@/types';
 import { toast } from 'sonner';
 import { useEmployees } from './EmployeesContext';
-import { differenceInSeconds } from 'date-fns';
+import { differenceInSeconds, differenceInMinutes } from 'date-fns';
 import { formatDuration } from '@/lib/utils';
 import { getTimeEntriesByCompany, createManualShift, deleteShift as apiDeleteShift, updateShift as apiUpdateShift } from '@/services/api';
 import { MAX_SHIFT_MINUTES } from '@/config/rules';
-import { differenceInMinutes } from 'date-fns';
 
-// El backend ahora devuelve objetos TimeEntry, que son funcionalmente equivalentes a nuestros Shifts.
-// Usaremos el tipo TimeLog como base para nuestros turnos procesados.
 interface ShiftsContextType {
-  shifts: TimeLog[]; // Esto contendrá los turnos procesados
+  timeEntries: TimeEntry[];
   openShifts: OpenShift[];
-  processedShifts: ProcessedShift[]; // ADDED
+  processedShifts: ProcessedShift[];
   loading: boolean;
   reloadShifts: () => void;
   addShift: (shiftData: { employeeId: string; start_time: Date; end_time: Date; }) => Promise<void>;
@@ -33,7 +30,7 @@ export const useShifts = () => {
 };
 
 export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [shifts, setShifts] = useState<TimeLog[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -45,46 +42,13 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const reloadShifts = useCallback(async () => {
-    console.log("ShiftsContext: Iniciando reloadShifts...");
-    if (!companyId) {
-      console.log("ShiftsContext: companyId no disponible, saltando reloadShifts.");
-      return;
-    }
+    if (!companyId) return;
     setLoading(true);
     try {
-      const timeEntries = await getTimeEntriesByCompany(companyId);
-      console.log("ShiftsContext: timeEntries recibidos del backend:", timeEntries);
-      
-      // Transformamos los TimeEntry del backend a dos TimeLog (entrada y salida) para mantener la compatibilidad
-      // con la lógica de procesamiento existente en ShiftsTable.
-      const processedLogs: TimeLog[] = timeEntries.flatMap((entry, index) => {
-        const logs: TimeLog[] = [];
-        logs.push({
-          shiftId: entry.id, // <-- ID REAL AÑADIDO
-          employeeId: entry.employeeId,
-          timestamp: entry.start_time,
-          type: 'ENTRADA',
-          row: index * 2 + 1, // Simulación de número de fila
-          source: 'backend',
-        });
-        if (entry.end_time) {
-          logs.push({
-            shiftId: entry.id, // <-- ID REAL AÑADIDO
-            employeeId: entry.employeeId,
-            timestamp: entry.end_time,
-            type: 'SALIDA',
-            row: index * 2 + 2, // Simulación de número de fila
-            source: 'backend',
-          });
-        }
-        return logs;
-      });
-
-      // Sort processedLogs by timestamp to ensure correct open/close logic
-      processedLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-      setShifts(processedLogs);
-      console.log("ShiftsContext: shifts actualizados a:", processedLogs);
+      const entries = await getTimeEntriesByCompany(companyId);
+      // Los datos de la API ya vienen ordenados, pero una re-ordenación en el cliente no hace daño.
+      entries.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime());
+      setTimeEntries(entries);
       setError(null);
     } catch (err) {
       setError('Failed to fetch shifts');
@@ -92,7 +56,6 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       toast.error('Error al cargar la actividad.');
     } finally {
       setLoading(false);
-      console.log("ShiftsContext: reloadShifts finalizado.");
     }
   }, [companyId]);
 
@@ -100,104 +63,56 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (companyId) reloadShifts();
   }, [reloadShifts, companyId]);
 
-  // NUEVO: useEffect para el polling
   useEffect(() => {
     const POLLING_INTERVAL = 7 * 60 * 1000; // 7 minutos
-
-    console.log("ShiftsContext: Configurando polling cada 7 minutos.");
-    const intervalId = setInterval(() => {
-      console.log("ShiftsContext: Ejecutando reloadShifts desde el polling.");
-      reloadShifts();
-    }, POLLING_INTERVAL);
-
-    // Función de limpieza para detener el intervalo cuando el componente se desmonte
-    return () => {
-      console.log("ShiftsContext: Limpiando intervalo de polling.");
-      clearInterval(intervalId);
-    };
-  }, [reloadShifts]); // El array de dependencias asegura que se use la última versión de reloadShifts
+    const intervalId = setInterval(() => reloadShifts(), POLLING_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [reloadShifts]);
 
   const openShifts = useMemo((): OpenShift[] => {
-    const openShiftsMap = new Map<string, Date>();
-
-    shifts.forEach(log => {
-      if (log.type === 'ENTRADA') {
-        openShiftsMap.set(log.employeeId, new Date(log.timestamp));
-      } else if (log.type === 'SALIDA') {
-        openShiftsMap.delete(log.employeeId);
-      }
-    });
-
     const employeeMap = new Map(employees.map(e => [e.id, e.full_name]));
-    const openShiftsData: OpenShift[] = [];
-
-    openShiftsMap.forEach((entryTimestamp, employeeId) => {
-      const employeeName = employeeMap.get(employeeId);
-      if (employeeName) {
-        const totalSeconds = differenceInSeconds(currentTime, entryTimestamp);
-        openShiftsData.push({
-          employeeId,
+    
+    return timeEntries
+      .filter(entry => !entry.end_time)
+      .map(entry => {
+        const employeeName = employeeMap.get(entry.employeeId) || 'Unknown';
+        const totalSeconds = differenceInSeconds(currentTime, new Date(entry.start_time));
+        return {
+          employeeId: entry.employeeId,
           employeeName,
-          entryTimestamp,
+          entryTimestamp: new Date(entry.start_time),
           liveDuration: formatDuration(totalSeconds),
-        });
-      }
-    });
-
-    return openShiftsData;
-  }, [shifts, employees, currentTime]);
+        };
+      });
+  }, [timeEntries, employees, currentTime]);
 
   const processedShifts = useMemo((): ProcessedShift[] => {
-    const shiftsMap = new Map<string, { entry?: TimeLog, exit?: TimeLog }>();
-
-    shifts.forEach(log => {
-      if (log.shiftId) {
-        const current = shiftsMap.get(log.shiftId) || {};
-        if (log.type === 'ENTRADA') {
-          current.entry = log;
-        } else if (log.type === 'SALIDA') {
-          current.exit = log;
-        }
-        shiftsMap.set(log.shiftId, current);
-      }
-    });
-
     const employeeMap = new Map(employees.map(e => [e.id, e.full_name]));
-    const result: ProcessedShift[] = [];
 
-    shiftsMap.forEach((shiftLogs, shiftId) => {
-      if (shiftLogs.entry) {
-        const employeeName = employeeMap.get(shiftLogs.entry.employeeId) || 'Unknown';
-        const entryTimestamp = shiftLogs.entry.timestamp;
-        const exitTimestamp = shiftLogs.exit?.timestamp;
-        const duration = exitTimestamp ? differenceInSeconds(new Date(exitTimestamp), new Date(entryTimestamp)) : undefined;
-        
-        // NEW: Anomaly detection logic
-        let isAnomalous = false;
-        if (exitTimestamp) {
-          // For closed shifts
-          isAnomalous = differenceInMinutes(new Date(exitTimestamp), new Date(entryTimestamp)) > MAX_SHIFT_MINUTES;
-        } else {
-          // For open shifts
-          isAnomalous = differenceInMinutes(new Date(), new Date(entryTimestamp)) > MAX_SHIFT_MINUTES;
-        }
+    return timeEntries.map(entry => {
+      const employeeName = employeeMap.get(entry.employeeId) || 'Unknown';
+      const entryTimestamp = new Date(entry.start_time);
+      const exitTimestamp = entry.end_time ? new Date(entry.end_time) : undefined;
+      const duration = exitTimestamp ? differenceInSeconds(exitTimestamp, entryTimestamp) : undefined;
 
-        result.push({
-          id: shiftId,
-          employeeId: shiftLogs.entry.employeeId,
-          employeeName,
-          entryTimestamp,
-          exitTimestamp,
-          entryRow: shiftLogs.entry.row,
-          exitRow: shiftLogs.exit?.row,
-          duration: duration ? formatDuration(duration) : undefined, // Assuming formatDuration handles seconds
-          isAnomalous, // Use the calculated value
-        });
+      let isAnomalous = false;
+      if (exitTimestamp) {
+        isAnomalous = differenceInMinutes(exitTimestamp, entryTimestamp) > MAX_SHIFT_MINUTES;
+      } else {
+        isAnomalous = differenceInMinutes(currentTime, entryTimestamp) > MAX_SHIFT_MINUTES;
       }
-    });
 
-    return result;
-  }, [shifts, employees]);
+      return {
+        id: entry.id,
+        employeeId: entry.employeeId,
+        employeeName,
+        entryTimestamp: entryTimestamp,
+        exitTimestamp: exitTimestamp,
+        duration: duration ? formatDuration(duration) : undefined,
+        isAnomalous,
+      };
+    });
+  }, [timeEntries, employees, currentTime]);
 
   const addShift = async (shiftData: { employeeId: string; start_time: Date; end_time: Date; }) => {
     if (!companyId) {
@@ -228,9 +143,10 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw err;
     }
   };
+
   const deleteShift = async (shiftId: string) => {
     try {
-      await apiDeleteShift(shiftId); // Assuming you rename the import
+      await apiDeleteShift(shiftId);
       toast.success('Actividad eliminada exitosamente');
       await reloadShifts();
     } catch (err) {
@@ -242,7 +158,7 @@ export const ShiftsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   return (
-    <ShiftsContext.Provider value={{ shifts, openShifts, processedShifts, loading, reloadShifts, addShift, updateShift, deleteShift, error }}>
+    <ShiftsContext.Provider value={{ timeEntries, openShifts, processedShifts, loading, reloadShifts, addShift, updateShift, deleteShift, error }}>
       {children}
     </ShiftsContext.Provider>
   );

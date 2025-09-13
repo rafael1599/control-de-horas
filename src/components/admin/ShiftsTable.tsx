@@ -10,8 +10,9 @@ import ManualExitDialog from './ManualExitDialog';
 import AddShiftDialog from './AddShiftDialog';
 import EditShiftDialog from './EditShiftDialog';
 
+
 interface ShiftsTableProps {
-  logs: TimeLog[];
+  shifts: ProcessedShift[];
   employees: Employee[];
   onUpdateShift: (entryRow: number, exitRow: number, entryTimestamp: string, exitTimestamp: string) => Promise<void>;
   onCorrectionComplete: () => void;
@@ -19,73 +20,18 @@ interface ShiftsTableProps {
   onClearFilter?: () => void;
 }
 
-const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShift, onCorrectionComplete, filterByEmployeeId, onClearFilter }) => {
+const ShiftsTable: React.FC<ShiftsTableProps> = ({ shifts, employees, onUpdateShift, onCorrectionComplete, filterByEmployeeId, onClearFilter }) => {
   const [isCorrectionDialogOpen, setIsCorrectionDialogOpen] = useState(false);
   const [isAddShiftDialogOpen, setIsAddShiftDialogOpen] = useState(false);
   const [isEditShiftDialogOpen, setIsEditShiftDialogOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState<ProcessedShift | null>(null);
 
-  const processedShifts = useMemo(() => {
-    const employeeMap = new Map(employees.map(e => [e.id, e.full_name]));
-    const openShifts = new Map<string, TimeLog>();
-    const shifts: ProcessedShift[] = [];
-
-    const sortedLogs = [...logs].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-    sortedLogs.forEach(log => {
-      if (log.type === 'ENTRADA') {
-        if (openShifts.has(log.employeeId)) {
-          const openShift = openShifts.get(log.employeeId)!;
-          shifts.push({
-            id: openShift.shiftId!,
-            employeeId: openShift.employeeId,
-            employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
-            entryTimestamp: openShift.timestamp,
-            isAnomalous: true,
-            entryRow: openShift.row,
-          });
-        }
-        openShifts.set(log.employeeId, log);
-      } else if (log.type === 'SALIDA') {
-        if (openShifts.has(log.employeeId)) {
-          const openShift = openShifts.get(log.employeeId)!;
-          shifts.push({
-            id: openShift.shiftId!,
-            employeeId: openShift.employeeId,
-            employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
-            entryTimestamp: openShift.timestamp,
-            exitTimestamp: log.timestamp,
-            duration: differenceInMilliseconds(new Date(log.timestamp), new Date(openShift.timestamp)) / (1000 * 60 * 60),
-            isAnomalous: differenceInMinutes(new Date(log.timestamp), new Date(openShift.timestamp)) > MAX_SHIFT_MINUTES,
-            entryRow: openShift.row,
-            exitRow: log.row,
-          });
-          openShifts.delete(log.employeeId);
-        } else {
-          // Orphan SALIDA
-        }
-      }
-    });
-
-    openShifts.forEach(openShift => {
-      shifts.push({
-        id: openShift.shiftId!,
-        employeeId: openShift.employeeId,
-        employeeName: employeeMap.get(openShift.employeeId) || openShift.employeeId,
-        entryTimestamp: openShift.timestamp,
-        isAnomalous: differenceInMinutes(new Date(), new Date(openShift.timestamp)) > MAX_SHIFT_MINUTES,
-        entryRow: openShift.row,
-      });
-    });
-
-    const allShifts = shifts.sort((a, b) => new Date(b.entryTimestamp).getTime() - new Date(a.entryTimestamp).getTime());
-
+  const filteredShifts = useMemo(() => {
     if (filterByEmployeeId) {
-      return allShifts.filter(shift => shift.employeeId === filterByEmployeeId);
+      return shifts.filter(shift => shift.employeeId === filterByEmployeeId);
     }
-
-    return allShifts;
-  }, [logs, employees, filterByEmployeeId]);
+    return shifts;
+  }, [shifts, filterByEmployeeId]);
 
   const handleOpenDialog = (dialog: 'correct' | 'edit', shift: ProcessedShift) => {
     setSelectedShift(shift);
@@ -147,7 +93,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
             </TableRow>
           </TableHeader>
           <TableBody>
-            {processedShifts.map((shift) => (
+            {filteredShifts.map((shift) => (
               <TableRow key={shift.id} className={shift.isAnomalous ? 'bg-red-100' : ''}>
                 <TableCell>{shift.employeeName}</TableCell>
                 
@@ -169,7 +115,7 @@ const ShiftsTable: React.FC<ShiftsTableProps> = ({ logs, employees, onUpdateShif
 
                 <TableCell>
                   {shift.duration !== undefined ? (
-                    shift.duration.toFixed(2)
+                    shift.duration
                   ) : (
                     shift.isAnomalous ? `> ${MAX_SHIFT_HOURS}h` : '-'
                   )}

@@ -58,7 +58,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     }
   }, [isShiftDetailsCollapsibleOpen]);
   
-  const { shifts, loading: loadingShifts, updateShift, reloadShifts } = useShifts();
+  const { processedShifts, loading: loadingShifts, updateShift, reloadShifts } = useShifts();
 
   const loading = loadingEmployees || loadingShifts;
 
@@ -136,7 +136,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
         <TabsContent value="logs" className="space-y-4">
           <WeeklySummary 
             employees={allEmployees} 
-            logs={shifts}
+            shifts={processedShifts}
           />
           <Collapsible open={isShiftDetailsCollapsibleOpen} onOpenChange={setIsShiftDetailsCollapsibleOpen} className="w-full space-y-2">
             <div className="flex justify-end gap-2 mt-4">
@@ -151,7 +151,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
             </div>
             <CollapsibleContent ref={collapsibleContentRef} className="space-y-4">
               <ShiftsTable
-                logs={shifts}
+                shifts={processedShifts}
                 employees={allEmployees}
                 onUpdateShift={updateShift}
                 onCorrectionComplete={reloadShifts}
